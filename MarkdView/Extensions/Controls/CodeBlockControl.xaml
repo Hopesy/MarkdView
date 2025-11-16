@@ -1,0 +1,120 @@
+<UserControl x:Class="MarkdView.Extensions.Controls.CodeBlockControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d">
+
+    <Border x:Name="RootBorder"
+            Background="{DynamicResource Markdown.CodeBlock.Background}"
+            BorderBrush="{DynamicResource Markdown.CodeBlock.Border}"
+            BorderThickness="1"
+            CornerRadius="6"
+            Margin="0,12,0,12">
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <!-- 标题栏（语言+复制按钮） -->
+                <RowDefinition Height="Auto"/>
+                <!-- 代码内容 -->
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- 标题栏 -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource Markdown.CodeBlock.LabelBackground}"
+                    BorderBrush="{DynamicResource Markdown.CodeBlock.Border}"
+                    BorderThickness="0,0,0,1"
+                    CornerRadius="6,6,0,0"
+                    Padding="12,8">
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 语言标签 -->
+                    <TextBlock x:Name="LanguageLabel"
+                               Grid.Column="0"
+                               FontFamily="{DynamicResource Markdown.CodeFontFamily}"
+                               FontSize="11"
+                               Foreground="{DynamicResource Markdown.CodeBlock.LabelForeground}"
+                               VerticalAlignment="Center"
+                               Text="code"/>
+
+                    <!-- 复制按钮 -->
+                    <Button x:Name="CopyButton"
+                            Grid.Column="1"
+                            Padding="8,4"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            BorderThickness="1"
+                            Cursor="Hand"
+                            ToolTip="复制代码"
+                            Click="CopyButton_Click">
+
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    CornerRadius="4"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <!-- 鼠标悬停 -->
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#20FFFFFF"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource Markdown.Link.Foreground}"/>
+                                    </Trigger>
+                                    <!-- 鼠标按下 -->
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter Property="Background" Value="#30FFFFFF"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+
+                        <StackPanel Orientation="Horizontal">
+                            <!-- 图标（使用Unicode符号） -->
+                            <TextBlock x:Name="CopyIcon"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource Markdown.CodeBlock.LabelForeground}"
+                                       Text="📋"
+                                       Margin="0,0,4,0"/>
+
+                            <!-- 文本 -->
+                            <TextBlock x:Name="CopyText"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource Markdown.CodeBlock.LabelForeground}"
+                                       Text="复制"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- 代码内容 -->
+            <ScrollViewer Grid.Row="1"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto"
+                          Padding="16,12">
+
+                <TextBlock x:Name="CodeTextBlock"
+                           FontFamily="{DynamicResource Markdown.CodeFontFamily}"
+                           FontSize="{DynamicResource Markdown.CodeFontSize}"
+                           Foreground="{DynamicResource Markdown.CodeBlock.Foreground}"
+                           TextWrapping="NoWrap"
+                           LineHeight="{DynamicResource Markdown.LineHeight}"/>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

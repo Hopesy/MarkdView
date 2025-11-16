@@ -1,0 +1,126 @@
+<Window x:Class="MarkdView.Examples.BasicUsage"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:markd="clr-namespace:MarkdView.Controls"
+        Title="MarkdView 示例" Height="600" Width="800">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- 标题 -->
+        <TextBlock Grid.Row="0"
+                   Text="MarkdView 基础用法示例"
+                   FontSize="20"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,20"/>
+
+        <!-- Tab 切换不同示例 -->
+        <TabControl Grid.Row="1">
+
+            <!-- 示例 1: 基础渲染 -->
+            <TabItem Header="基础渲染">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <markd:MarkdownViewer
+                        EnableStreaming="False"
+                        Markdown="# 欢迎使用 MarkdView&#x0A;&#x0A;这是一个**现代化**的 WPF Markdown 渲染库。&#x0A;&#x0A;## 特性&#x0A;&#x0A;- ✅ 流式渲染&#x0A;- ✅ 语法高亮&#x0A;- ✅ 主题支持&#x0A;&#x0A;### 代码示例&#x0A;&#x0A;```csharp&#x0A;public class HelloWorld&#x0A;{&#x0A;    public static void Main()&#x0A;    {&#x0A;        Console.WriteLine(&quot;Hello, MarkdView!&quot;);&#x0A;    }&#x0A;}&#x0A;```&#x0A;&#x0A;> 这是一个引用块示例&#x0A;&#x0A;| 列1 | 列2 | 列3 |&#x0A;|------|------|------|&#x0A;| 数据1 | 数据2 | 数据3 |&#x0A;| 数据4 | 数据5 | 数据6 |"/>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- 示例 2: 流式渲染（模拟 AI 输出） -->
+            <TabItem Header="流式渲染">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Margin="0,0,0,10">
+                        <TextBlock Text="流式渲染演示（模拟 AI 逐字输出）"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,10"/>
+                        <Button x:Name="StartStreamingButton"
+                                Content="开始流式渲染"
+                                Padding="10,5"
+                                HorizontalAlignment="Left"/>
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <markd:MarkdownViewer
+                            x:Name="StreamingViewer"
+                            EnableStreaming="True"
+                            StreamingThrottle="50"
+                            EnableSyntaxHighlighting="True"/>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- 示例 3: 语法高亮 -->
+            <TabItem Header="代码高亮">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <markd:MarkdownViewer
+                        EnableSyntaxHighlighting="True"
+                        Markdown="# 多语言代码高亮示例&#x0A;&#x0A;## C# 代码&#x0A;&#x0A;```csharp&#x0A;public async Task&lt;string&gt; GetDataAsync()&#x0A;{&#x0A;    using var client = new HttpClient();&#x0A;    var response = await client.GetStringAsync(&quot;https://api.example.com&quot;);&#x0A;    return response;&#x0A;}&#x0A;```&#x0A;&#x0A;## JavaScript 代码&#x0A;&#x0A;```javascript&#x0A;async function fetchData() {&#x0A;    const response = await fetch('https://api.example.com');&#x0A;    const data = await response.json();&#x0A;    return data;&#x0A;}&#x0A;```&#x0A;&#x0A;## Python 代码&#x0A;&#x0A;```python&#x0A;def fibonacci(n):&#x0A;    if n &lt;= 1:&#x0A;        return n&#x0A;    return fibonacci(n-1) + fibonacci(n-2)&#x0A;&#x0A;# 打印前 10 个斐波那契数&#x0A;for i in range(10):&#x0A;    print(fibonacci(i))&#x0A;```"/>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- 示例 4: 配置选项 -->
+            <TabItem Header="配置选项">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 配置面板 -->
+                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                        <TextBlock Text="配置选项"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,10"/>
+
+                        <CheckBox x:Name="EnableStreamingCheckBox"
+                                  Content="启用流式渲染"
+                                  IsChecked="True"
+                                  Margin="0,5"/>
+
+                        <CheckBox x:Name="EnableHighlightingCheckBox"
+                                  Content="启用语法高亮"
+                                  IsChecked="True"
+                                  Margin="0,5"/>
+
+                        <TextBlock Text="防抖间隔 (ms):" Margin="0,10,0,5"/>
+                        <Slider x:Name="ThrottleSlider"
+                                Minimum="10"
+                                Maximum="200"
+                                Value="50"
+                                TickFrequency="10"
+                                IsSnapToTickEnabled="True"/>
+                        <TextBlock Text="{Binding ElementName=ThrottleSlider, Path=Value, StringFormat={}{0:F0} ms}"/>
+
+                        <TextBlock Text="字体大小:" Margin="0,10,0,5"/>
+                        <Slider x:Name="FontSizeSlider"
+                                Minimum="10"
+                                Maximum="24"
+                                Value="14"
+                                TickFrequency="2"
+                                IsSnapToTickEnabled="True"/>
+                        <TextBlock Text="{Binding ElementName=FontSizeSlider, Path=Value, StringFormat={}{0:F0} px}"/>
+                    </StackPanel>
+
+                    <!-- 预览面板 -->
+                    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                        <markd:MarkdownViewer
+                            x:Name="ConfigurableViewer"
+                            EnableStreaming="{Binding ElementName=EnableStreamingCheckBox, Path=IsChecked}"
+                            EnableSyntaxHighlighting="{Binding ElementName=EnableHighlightingCheckBox, Path=IsChecked}"
+                            StreamingThrottle="{Binding ElementName=ThrottleSlider, Path=Value}"
+                            FontSize="{Binding ElementName=FontSizeSlider, Path=Value}"
+                            Markdown="# 可配置的 MarkdownViewer&#x0A;&#x0A;调整左侧的选项来查看效果。&#x0A;&#x0A;## 代码示例&#x0A;&#x0A;```csharp&#x0A;var viewer = new MarkdownViewer&#x0A;{&#x0A;    EnableStreaming = true,&#x0A;    StreamingThrottle = 50,&#x0A;    EnableSyntaxHighlighting = true&#x0A;};&#x0A;```&#x0A;&#x0A;## 列表示例&#x0A;&#x0A;1. 第一项&#x0A;2. 第二项&#x0A;3. 第三项&#x0A;&#x0A;- 无序项 A&#x0A;- 无序项 B&#x0A;- 无序项 C"/>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+        </TabControl>
+    </Grid>
+</Window>
