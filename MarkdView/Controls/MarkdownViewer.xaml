@@ -8,8 +8,8 @@
              mc:Ignorable="d">
     <FlowDocumentScrollViewer x:Name="MarkdownDocument"
                               Background="Transparent"
-                              HorizontalScrollBarVisibility="Disabled"
+                              HorizontalScrollBarVisibility="Auto"
                               IsToolBarVisible="False"
-                              VerticalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto"
                               Zoom="1.0" />
 </UserControl>

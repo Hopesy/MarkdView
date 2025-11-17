@@ -14,21 +14,28 @@
     <Description>Modern WPF Markdown renderer with streaming support, syntax highlighting, emoji rendering, and Mac-style code blocks. 基于 Markdig 的现代化 WPF Markdown 渲染库，支持流式渲染、代码高亮、Emoji 彩色渲染和 Mac 风格代码块。</Description>
     <PackageTags>wpf;markdown;markdig;streaming;syntax-highlighting;ai;emoji;code-block</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <RepositoryUrl>https://github.com/MinoChat/MarkdView</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/MinoChat/MarkdView</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/hopesy/MarkdView</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/hopesy/MarkdView</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageReleaseNotes>v1.0.0: Initial release with streaming support, syntax highlighting, emoji rendering, and Mac-style code blocks with copy functionality.</PackageReleaseNotes>
+    <PackageIcon>icon.png</PackageIcon>
   </PropertyGroup>
+  <!-- 包含外层README 和 LICENSE 到 NuGet 包 -->
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <!--依赖其他包-->
   <ItemGroup>
     <PackageReference Include="Emoji.Wpf" Version="0.3.4" />
     <PackageReference Include="Markdig" Version="0.43.0" />
   </ItemGroup>
-
-  <!-- 包含 README 和 LICENSE 到 NuGet 包 -->
   <ItemGroup>
-    <None Include="..\README.md" Pack="true" PackagePath="\" />
-    <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+    <None Update="icon.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 </Project>

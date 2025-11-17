@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Markdig;
 using Markdig.Syntax;
@@ -43,7 +44,7 @@ public partial class MarkdownViewer : UserControl
             nameof(EnableStreaming),
             typeof(bool),
             typeof(MarkdownViewer),
-            new PropertyMetadata(true));
+            new PropertyMetadata(true, OnEnableStreamingChanged));
 
     /// <summary>
     /// 流式渲染防抖间隔(毫秒,默认 50)
@@ -63,7 +64,47 @@ public partial class MarkdownViewer : UserControl
             nameof(EnableSyntaxHighlighting),
             typeof(bool),
             typeof(MarkdownViewer),
-            new PropertyMetadata(true));
+            new PropertyMetadata(true, OnEnableSyntaxHighlightingChanged));
+
+    /// <summary>
+    /// 水平对齐方式(默认 Center)
+    /// </summary>
+    public new static readonly DependencyProperty HorizontalAlignmentProperty =
+        DependencyProperty.Register(
+            nameof(HorizontalAlignment),
+            typeof(HorizontalAlignment),
+            typeof(MarkdownViewer),
+            new PropertyMetadata(HorizontalAlignment.Center, OnHorizontalAlignmentChanged));
+
+    /// <summary>
+    /// 水平内容对齐方式(默认 Stretch)
+    /// </summary>
+    public new static readonly DependencyProperty HorizontalContentAlignmentProperty =
+        DependencyProperty.Register(
+            nameof(HorizontalContentAlignment),
+            typeof(HorizontalAlignment),
+            typeof(MarkdownViewer),
+            new PropertyMetadata(HorizontalAlignment.Stretch, OnHorizontalContentAlignmentChanged));
+
+    /// <summary>
+    /// 字体(默认 Microsoft YaHei UI, Segoe UI)
+    /// </summary>
+    public new static readonly DependencyProperty FontFamilyProperty =
+        DependencyProperty.Register(
+            nameof(FontFamily),
+            typeof(FontFamily),
+            typeof(MarkdownViewer),
+            new PropertyMetadata(new FontFamily("Microsoft YaHei UI, Segoe UI"), OnFontFamilyChanged));
+
+    /// <summary>
+    /// 字体大小(默认 14)
+    /// </summary>
+    public new static readonly DependencyProperty FontSizeProperty =
+        DependencyProperty.Register(
+            nameof(FontSize),
+            typeof(double),
+            typeof(MarkdownViewer),
+            new PropertyMetadata(14.0, OnFontSizeChanged));
 
     #endregion
 
@@ -93,6 +134,30 @@ public partial class MarkdownViewer : UserControl
         set => SetValue(EnableSyntaxHighlightingProperty, value);
     }
 
+    public new HorizontalAlignment HorizontalAlignment
+    {
+        get => (HorizontalAlignment)GetValue(HorizontalAlignmentProperty);
+        set => SetValue(HorizontalAlignmentProperty, value);
+    }
+
+    public new HorizontalAlignment HorizontalContentAlignment
+    {
+        get => (HorizontalAlignment)GetValue(HorizontalContentAlignmentProperty);
+        set => SetValue(HorizontalContentAlignmentProperty, value);
+    }
+
+    public new FontFamily FontFamily
+    {
+        get => (FontFamily)GetValue(FontFamilyProperty);
+        set => SetValue(FontFamilyProperty, value);
+    }
+
+    public new double FontSize
+    {
+        get => (double)GetValue(FontSizeProperty);
+        set => SetValue(FontSizeProperty, value);
+    }
+
     #endregion
 
     #region 私有字段
@@ -116,6 +181,7 @@ public partial class MarkdownViewer : UserControl
             .UseAdvancedExtensions()
             .UseEmojiAndSmiley()
             .UseTaskLists()
+            .UseMediaLinks() // 启用图片链接支持
             .Build();
 
         // 配置流式渲染定时器
@@ -127,6 +193,14 @@ public partial class MarkdownViewer : UserControl
 
         // 处理滚轮事件冒泡 - 使滚动在 ListView 等容器中正常工作
         MarkdownDocument.PreviewMouseWheel += OnPreviewMouseWheel;
+
+        // 设置默认属性值
+        HorizontalAlignment = HorizontalAlignment.Center;
+        HorizontalContentAlignment = HorizontalAlignment.Stretch;
+        EnableStreaming = true;
+        EnableSyntaxHighlighting = true;
+        FontFamily = new FontFamily("Microsoft YaHei UI, Segoe UI");
+        FontSize = 14.0;
 
         // 初始渲染
         RenderMarkdown();
@@ -149,6 +223,58 @@ public partial class MarkdownViewer : UserControl
         if (d is MarkdownViewer viewer)
         {
             viewer._updateTimer.Interval = TimeSpan.FromMilliseconds((int)e.NewValue);
+        }
+    }
+
+    private static void OnEnableStreamingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is MarkdownViewer viewer)
+        {
+            viewer.EnableStreaming = (bool)e.NewValue;
+        }
+    }
+
+    private static void OnEnableSyntaxHighlightingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is MarkdownViewer viewer)
+        {
+            viewer.EnableSyntaxHighlighting = (bool)e.NewValue;
+            // 重新渲染以应用语法高亮更改
+            viewer.RenderMarkdown();
+        }
+    }
+
+    private static void OnHorizontalAlignmentChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is MarkdownViewer viewer)
+        {
+            viewer.HorizontalAlignment = (HorizontalAlignment)e.NewValue;
+        }
+    }
+
+    private static void OnHorizontalContentAlignmentChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is MarkdownViewer viewer)
+        {
+            viewer.HorizontalContentAlignment = (HorizontalAlignment)e.NewValue;
+        }
+    }
+
+    private static void OnFontFamilyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is MarkdownViewer viewer)
+        {
+            viewer.FontFamily = (FontFamily)e.NewValue;
+            viewer.RenderMarkdown();
+        }
+    }
+
+    private static void OnFontSizeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is MarkdownViewer viewer)
+        {
+            viewer.FontSize = (double)e.NewValue;
+            viewer.RenderMarkdown();
         }
     }
 
@@ -232,9 +358,9 @@ public partial class MarkdownViewer : UserControl
         // 创建 FlowDocument 并应用基础样式
         var flowDocument = new FlowDocument
         {
-            FontFamily = GetFontFamily("Markdown.FontFamily", "PingFang SC, Microsoft YaHei, sans-serif"),
-            FontSize = GetFontSize("Markdown.FontSize", 15),
-            LineHeight = GetDouble("Markdown.LineHeight", 1.6) * GetFontSize("Markdown.FontSize", 15),
+            FontFamily = FontFamily, // 使用控件属性
+            FontSize = FontSize, // 使用控件属性
+            LineHeight = GetDouble("Markdown.LineHeight", 1.6) * FontSize, // 使用控件属性
             Foreground = GetBrush("Markdown.Foreground", Color.FromRgb(0x66, 0x66, 0x66)),
             Background = GetBrush("Markdown.Background", Colors.Transparent),
             PagePadding = new Thickness(0)
@@ -565,13 +691,15 @@ public partial class MarkdownViewer : UserControl
             TextWrapping = TextWrapping.NoWrap
         };
 
-        // TODO: 应用语法高亮（如果需要的话，可以用 Inlines 代替 Text）
-        if (EnableSyntaxHighlighting && !string.IsNullOrEmpty(language))
+        // 启用语法高亮（如果需要的话，可以用 Inlines 代替 Text）
+        System.Diagnostics.Debug.WriteLine($"[代码高亮] EnableSyntaxHighlighting={EnableSyntaxHighlighting}, Language={language ?? "null"}");
+        if (EnableSyntaxHighlighting)
         {
             // 这里可以应用语法高亮，但由于我们用的是 TextBlock 而不是 FlowDocument
             // 需要使用 Inlines 来实现高亮
             codeTextBlock.Text = string.Empty;
             ApplySyntaxHighlightingToTextBlock(codeTextBlock, code, language);
+            System.Diagnostics.Debug.WriteLine($"[代码高亮] 应用高亮后 Inlines 数量: {codeTextBlock.Inlines.Count}");
         }
 
         codeScrollViewer.Content = codeTextBlock;
@@ -618,7 +746,7 @@ public partial class MarkdownViewer : UserControl
     /// <summary>
     /// 对 TextBlock 应用语法高亮
     /// </summary>
-    private void ApplySyntaxHighlightingToTextBlock(System.Windows.Controls.TextBlock textBlock, string code, string language)
+    private void ApplySyntaxHighlightingToTextBlock(System.Windows.Controls.TextBlock textBlock, string code, string? language)
     {
         // 简化的语法高亮实现
         var lines = code.Split('\n');
@@ -641,12 +769,12 @@ public partial class MarkdownViewer : UserControl
     /// </summary>
     private void ApplySyntaxHighlightingToLineForTextBlock(System.Windows.Controls.TextBlock textBlock, string line)
     {
-        // 关键字正则
-        var keywordPattern = @"\b(public|private|protected|class|interface|void|int|string|bool|var|return|if|else|for|while|new|using|namespace|static|async|await)\b";
+        // 关键字正则 - 扩展支持更多C#和常用语言关键字
+        var keywordPattern = @"\b(abstract|add|alias|as|ascending|async|await|base|bool|break|byte|case|catch|char|checked|class|const|continue|decimal|default|delegate|descending|do|double|dynamic|else|enum|event|explicit|extern|false|finally|fixed|float|for|foreach|from|get|global|goto|if|implicit|in|int|interface|internal|is|join|let|lock|long|namespace|new|null|object|operator|orderby|out|override|params|partial|private|protected|public|readonly|ref|remove|return|sbyte|sealed|select|set|short|sizeof|stackalloc|static|string|struct|switch|this|throw|true|try|typeof|uint|ulong|unchecked|unsafe|ushort|using|value|var|virtual|void|volatile|where|while|yield|dotnet|add|package|cmd|npx|uvx|mcp|server|fetch)\b";
         // 字符串正则
         var stringPattern = @"""([^""\\]|\\.)*""|'([^'\\]|\\.)*'";
         // 注释正则
-        var commentPattern = @"//.*$|/\*[\s\S]*?\*/";
+        var commentPattern = @"//.*$|/\*[\s\S]*?\*/|#.*$";
         // 数字正则
         var numberPattern = @"\b\d+(\.\d+)?\b";
 
@@ -784,6 +912,12 @@ public partial class MarkdownViewer : UserControl
     /// </summary>
     private WpfInline ConvertLink(LinkInline link)
     {
+        // 如果是图片链接，创建图片
+        if (link.IsImage)
+        {
+            return ConvertImage(link);
+        }
+
         var hyperlink = new Hyperlink
         {
             NavigateUri = link.Url != null ? new Uri(link.Url, UriKind.RelativeOrAbsolute) : null,
@@ -816,6 +950,90 @@ public partial class MarkdownViewer : UserControl
         }
 
         return hyperlink;
+    }
+
+    /// <summary>
+    /// 转换图片
+    /// </summary>
+    private WpfInline ConvertImage(LinkInline image)
+    {
+        if (string.IsNullOrEmpty(image.Url))
+            return new Run("[图片加载失败]");
+
+        try
+        {
+            var imageControl = new System.Windows.Controls.Image
+            {
+                Source = new BitmapImage(new Uri(image.Url, UriKind.RelativeOrAbsolute)),
+                Stretch = Stretch.Uniform,
+                MaxWidth = 800,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Thickness(0, 8, 0, 8),
+                Tag = image.Url
+            };
+
+            // 添加图片加载失败的处理
+            imageControl.ImageFailed += (s, e) =>
+            {
+                if (s is System.Windows.Controls.Image img)
+                {
+                    var textBlock = new System.Windows.Controls.TextBlock
+                    {
+                        Text = $"[图片加载失败: {img.Tag}]",
+                        Foreground = Brushes.Red,
+                        FontStyle = FontStyles.Italic,
+                        Margin = new Thickness(0, 8, 0, 8)
+                    };
+
+                    // 替换失败的图片为文本
+                    var parent = VisualTreeHelper.GetParent(img) as FrameworkElement;
+                    if (parent != null)
+                    {
+                        var container = parent.Parent as BlockUIContainer;
+                        if (container != null)
+                        {
+                            container.Child = textBlock;
+                        }
+                    }
+                }
+            };
+
+            // 为图片添加边框
+            var border = new Border
+            {
+                Child = imageControl,
+                Background = GetBrush("Markdown.Image.Background", Colors.Transparent),
+                BorderBrush = GetBrush("Markdown.Image.Border", Color.FromRgb(0xCC, 0xCC, 0xCC)),
+                BorderThickness = GetThickness("Markdown.Image.BorderThickness", new Thickness(0)),
+                CornerRadius = GetCornerRadius("Markdown.Image.CornerRadius", new CornerRadius(4)),
+                Padding = new Thickness(4),
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+
+            // 如果有替代文本，作为工具提示
+            if (image.FirstChild != null)
+            {
+                var tooltip = new ToolTip();
+                var tooltipTextBlock = new System.Windows.Controls.TextBlock
+                {
+                    Text = image.FirstChild.ToString(),
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 300
+                };
+                tooltip.Content = tooltipTextBlock;
+                border.ToolTip = tooltip;
+            }
+
+            return new InlineUIContainer(border);
+        }
+        catch (Exception ex)
+        {
+            return new Run($"[图片加载失败: {ex.Message}]")
+            {
+                Foreground = Brushes.Red,
+                FontStyle = FontStyles.Italic
+            };
+        }
     }
 
     #endregion
@@ -965,6 +1183,18 @@ public partial class MarkdownViewer : UserControl
             return (Thickness)Application.Current.Resources[key];
         }
         return defaultThickness;
+    }
+
+    /// <summary>
+    /// 从主题资源获取 CornerRadius
+    /// </summary>
+    private CornerRadius GetCornerRadius(string key, CornerRadius defaultCornerRadius)
+    {
+        if (Application.Current?.Resources.Contains(key) == true)
+        {
+            return (CornerRadius)Application.Current.Resources[key];
+        }
+        return defaultCornerRadius;
     }
 
     #endregion

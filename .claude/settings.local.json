@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s /b *.csproj)",
+      "Bash(dotnet build)",
+      "Bash(copy \"C:\\Users\\zhouh\\Desktop\\MarkdView\\Samples\\Example.md\" \".\")",
+      "Bash(dotnet run --project Samples)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
