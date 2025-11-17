@@ -4,7 +4,17 @@
       "Bash(dir /s /b *.csproj)",
       "Bash(dotnet build)",
       "Bash(copy \"C:\\Users\\zhouh\\Desktop\\MarkdView\\Samples\\Example.md\" \".\")",
-      "Bash(dotnet run --project Samples)"
+      "Bash(dotnet run --project Samples)",
+      "Bash(powershell -Command:*)",
+      "Bash(ping:*)",
+      "Bash(nul)",
+      "Bash(dotnet add:*)",
+      "Bash(del:*)",
+      "Bash(del \"MarkdView\\ViewModels\\RelayCommand.cs\")",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(ls:*)",
+      "Bash(taskkill:*)"
     ],
     "deny": [],
     "ask": []

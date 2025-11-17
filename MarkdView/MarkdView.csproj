@@ -7,7 +7,7 @@
     <UseWPF>true</UseWPF>
     <!-- NuGet 包信息 -->
     <PackageId>MarkdView</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>Hopesy</Authors>
     <Company>MinoChat</Company>
     <Product>MarkdView</Product>
@@ -29,6 +29,7 @@
   </ItemGroup>
   <!--依赖其他包-->
   <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Emoji.Wpf" Version="0.3.4" />
     <PackageReference Include="Markdig" Version="0.43.0" />
   </ItemGroup>

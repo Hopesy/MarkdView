@@ -1,11 +1,11 @@
-﻿<Window x:Class="Samples.MainWindow"
+<Window x:Class="Samples.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="clr-namespace:Samples"
         xmlns:markd="clr-namespace:MarkdView.Controls;assembly=MarkdView"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        Title="MarkdView 示例"
+        Title="MarkdView 示例 - MVVM 模式"
         Width="900"
         Height="600"
         mc:Ignorable="d">
@@ -14,24 +14,18 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-
-        <!-- 主题切换工具栏 -->
+        <!-- 主题切换工具栏 - 使用命令绑定 -->
         <StackPanel Margin="10" Background="#F0F0F0" Orientation="Horizontal">
-            <TextBlock Margin="0,0,10,0" VerticalAlignment="Center" FontWeight="Bold"
-                       Text="主题切换：" />
-            <Button x:Name="LightThemeBtn" Margin="5" Padding="10,5"
-                    Click="LightThemeBtn_Click" Content="浅色主题" />
-            <Button x:Name="DarkThemeBtn" Margin="5" Padding="10,5"
-                    Click="DarkThemeBtn_Click" Content="深色主题" />
-            <Button x:Name="HighContrastThemeBtn" Margin="5" Padding="10,5"
-                    Click="HighContrastThemeBtn_Click" Content="高对比度主题" />
-            <Separator Width="2" Margin="10,0" Background="#CCCCCC" />
-            <Button x:Name="ReloadBtn" Margin="5" Padding="10,5"
-                    Click="ReloadBtn_Click" Content="重新加载" />
+            <TextBlock Margin="0,0,10,0" VerticalAlignment="Center" FontWeight="Bold" Text="主题切换 (MVVM)：" />
+            <Button Margin="5" Padding="10,5"
+                    Command="{Binding SwitchToLightThemeCommand}"
+                    Content="浅色主题" />
+            <Button Margin="5" Padding="10,5"
+                    Command="{Binding SwitchToDarkThemeCommand}"
+                    Content="深色主题" />
         </StackPanel>
-
-        <!-- MarkdView 控件 -->
+        <!-- MarkdView 控件 - 绑定到 ViewModel -->
         <markd:MarkdownViewer x:Name="MarkdownViewer" Grid.Row="1" Margin="10"
-                              EnableSyntaxHighlighting="True" />
+                              ViewModel="{Binding MarkdownViewModel}" />
     </Grid>
 </Window>

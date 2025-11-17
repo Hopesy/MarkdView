@@ -1,7 +1,7 @@
 using System;
 using System.Windows;
 
-namespace MarkdView.Utilities;
+namespace MarkdView.Services.Theme;
 
 /// <summary>
 /// 主题管理器 - 简化主题切换操作

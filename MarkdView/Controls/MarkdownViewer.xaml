@@ -6,10 +6,6 @@
              d:DesignHeight="450"
              d:DesignWidth="800"
              mc:Ignorable="d">
-    <FlowDocumentScrollViewer x:Name="MarkdownDocument"
-                              Background="Transparent"
-                              HorizontalScrollBarVisibility="Auto"
-                              IsToolBarVisible="False"
-                              VerticalScrollBarVisibility="Auto"
-                              Zoom="1.0" />
+    <FlowDocumentScrollViewer x:Name="MarkdownDocument" Background="Transparent" HorizontalScrollBarVisibility="Auto" IsToolBarVisible="False"
+                              VerticalScrollBarVisibility="Auto" Zoom="1.0" />
 </UserControl>
