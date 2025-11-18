@@ -14,17 +14,13 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-
         <!-- 工具栏 -->
-        <Border Grid.Row="0" Padding="10" Background="#F0F0F0" BorderBrush="#CCCCCC" BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Padding="10" Background="#F0F0F0" BorderBrush="#CCCCCC"
+                BorderThickness="0,0,0,1">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Margin="0,0,10,0" VerticalAlignment="Center" FontWeight="Bold" Text="测试场景：" />
-                <Button Margin="5" Padding="10,5"
-                        Click="ShowSingleViewer_Click"
-                        Content="单个 MarkdownViewer" />
-                <Button Margin="5" Padding="10,5"
-                        Click="ShowListViewer_Click"
-                        Content="列表模式" />
+                <Button Margin="5" Padding="10,5" Click="ShowSingleViewer_Click" Content="单个 MarkdownViewer" />
+                <Button Margin="5" Padding="10,5" Click="ShowListViewer_Click" Content="列表模式" />
                 <Separator Margin="10,0" />
                 <TextBlock Margin="10,0" VerticalAlignment="Center" FontWeight="Bold" Text="主题：" />
                 <Button Margin="5" Padding="10,5"
@@ -35,81 +31,74 @@
                         Content="深色" />
             </StackPanel>
         </Border>
-
         <!-- 内容区域 -->
         <Grid x:Name="ContentArea" Grid.Row="1">
             <!-- 单个 MarkdownViewer 场景 -->
-            <ScrollViewer x:Name="SingleViewerPanel" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <Border Margin="20" Padding="20" Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8">
+            <ScrollViewer x:Name="SingleViewerPanel" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <Border Margin="20" Padding="20" Background="White" BorderBrush="#E0E0E0"
+                        BorderThickness="1" CornerRadius="8">
                     <StackPanel>
                         <TextBlock Margin="0,0,0,10" FontSize="16" FontWeight="Bold" Text="场景 1: ScrollViewer 包裹单个 MarkdownViewer" />
                         <TextBlock Margin="0,0,0,20" Foreground="#666666" Text="测试在 ScrollViewer 中使用单个 MarkdownViewer 的滚动表现" TextWrapping="Wrap" />
-
-                        <markd:MarkdownViewer Markdown="{Binding Content}"
+                        <markd:MarkdownViewer Content="{Binding Content}"
+                                              EnableSyntaxHighlighting="True" HorizontalScrollBarVisibility="Disabled"
                                               Theme="{Binding Theme}"
-                                              EnableSyntaxHighlighting="True" />
+                                              VerticalScrollBarVisibility="Disabled" />
                     </StackPanel>
                 </Border>
             </ScrollViewer>
-
             <!-- 列表模式场景 -->
-            <ScrollViewer x:Name="ListViewerPanel" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ScrollViewer x:Name="ListViewerPanel" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
                 <StackPanel Margin="20">
                     <TextBlock Margin="0,0,0,10" FontSize="16" FontWeight="Bold" Text="场景 2: ScrollViewer 中包含多个 MarkdownViewer 的列表" />
                     <TextBlock Margin="0,0,0,20" Foreground="#666666" Text="测试在列表场景下多个 MarkdownViewer 的滚动表现和性能" TextWrapping="Wrap" />
-
                     <!-- 卡片 1 -->
-                    <Border Margin="0,0,0,15" Padding="20" Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8">
+                    <Border Margin="0,0,0,15" Padding="20" Background="White" BorderBrush="#E0E0E0"
+                            BorderThickness="1" CornerRadius="8">
                         <StackPanel>
-                            <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333" Text="卡片 1 - 基础 Markdown" />
-                            <markd:MarkdownViewer Theme="{Binding Theme}" EnableSyntaxHighlighting="True">
-                                <markd:MarkdownViewer.Markdown>
-# 标题示例
-
-这是一个**粗体**文本和*斜体*文本的示例。
-
-## 列表示例
-
-- 第一项
-- 第二项
-- 第三项
-
-> 这是一个引用块示例
-                                </markd:MarkdownViewer.Markdown>
+                            <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333"
+                                       Text="卡片 1 - 基础 Markdown" />
+                            <markd:MarkdownViewer EnableSyntaxHighlighting="True" Theme="{Binding Theme}">
+                                <markd:MarkdownViewer.Markdown># 标题示例
+                                    这是一个**粗体**文本和*斜体*文本的示例。
+                                    ## 列表示例
+                                    - 第一项
+                                    - 第二项
+                                    - 第三项
+                                    > 这是一个引用块示例</markd:MarkdownViewer.Markdown>
                             </markd:MarkdownViewer>
                         </StackPanel>
                     </Border>
-
                     <!-- 卡片 2 -->
-                    <Border Margin="0,0,0,15" Padding="20" Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8">
+                    <Border Margin="0,0,0,15" Padding="20" Background="White" BorderBrush="#E0E0E0"
+                            BorderThickness="1" CornerRadius="8">
                         <StackPanel>
-                            <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333" Text="卡片 2 - 代码块示例" />
-                            <markd:MarkdownViewer Theme="{Binding Theme}" EnableSyntaxHighlighting="True">
-                                <markd:MarkdownViewer.Markdown>
-## C# 代码示例
-
-```csharp
-public class HelloWorld
-{
-    public static void Main(string[] args)
-    {
-        Console.WriteLine("Hello, World!");
-    }
-}
-```
-
-这是一个 `行内代码` 示例。
-                                </markd:MarkdownViewer.Markdown>
+                            <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333"
+                                       Text="卡片 2 - 代码块示例" />
+                            <markd:MarkdownViewer EnableSyntaxHighlighting="True" Theme="{Binding Theme}">
+                                <markd:MarkdownViewer.Markdown>## C# 代码示例
+                                    ```csharp
+                                    public class HelloWorld
+                                    {
+                                    public static void Main(string[] args)
+                                    {
+                                    Console.WriteLine("Hello, World!");
+                                    }
+                                    }
+                                    ```
+                                    这是一个 `行内代码` 示例。</markd:MarkdownViewer.Markdown>
                             </markd:MarkdownViewer>
                         </StackPanel>
                     </Border>
-
                     <!-- 卡片 3 -->
-                    <Border Margin="0,0,0,15" Padding="20" Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8">
+                    <Border Margin="0,0,0,15" Padding="20" Background="White" BorderBrush="#E0E0E0"
+                            BorderThickness="1" CornerRadius="8">
                         <StackPanel>
-                            <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333" Text="卡片 3 - JavaScript 示例" />
-                            <markd:MarkdownViewer Theme="{Binding Theme}" EnableSyntaxHighlighting="True">
-                                <markd:MarkdownViewer.Markdown><![CDATA[## JavaScript 函数
+                            <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333"
+                                       Text="卡片 3 - JavaScript 示例" />
+                            <markd:MarkdownViewer EnableSyntaxHighlighting="True" Theme="{Binding Theme}">
+                                <markd:MarkdownViewer.Markdown>
+                                    <![CDATA[## JavaScript 函数
 
 ```javascript
 function fibonacci(n) {
@@ -121,47 +110,43 @@ console.log(fibonacci(10));
 ```
 
 ### 链接示例
-访问 [GitHub](https://github.com) 了解更多。]]></markd:MarkdownViewer.Markdown>
-                            </markd:MarkdownViewer>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- 卡片 4 -->
-                    <Border Margin="0,0,0,15" Padding="20" Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8">
-                        <StackPanel>
-                            <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333" Text="卡片 4 - Python 示例" />
-                            <markd:MarkdownViewer Theme="{Binding Theme}" EnableSyntaxHighlighting="True">
-                                <markd:MarkdownViewer.Markdown>
-## Python 类示例
-
-```python
-class Person:
-    def __init__(self, name, age):
-        self.name = name
-        self.age = age
-
-    def greet(self):
-        print(f"Hello, I'm {self.name}")
-
-person = Person("Alice", 30)
-person.greet()
-```
-
----
-
-**注意**: 这只是一个示例代码。
+访问 [GitHub](https://github.com) 了解更多。]]>
                                 </markd:MarkdownViewer.Markdown>
                             </markd:MarkdownViewer>
                         </StackPanel>
                     </Border>
-
-                    <!-- 卡片 5 - 完整示例 -->
-                    <Border Margin="0,0,0,15" Padding="20" Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8">
+                    <!-- 卡片 4 -->
+                    <Border Margin="0,0,0,15" Padding="20" Background="White" BorderBrush="#E0E0E0"
+                            BorderThickness="1" CornerRadius="8">
                         <StackPanel>
-                            <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333" Text="卡片 5 - 完整文档示例" />
-                            <markd:MarkdownViewer Markdown="{Binding Content}"
-                                                  Theme="{Binding Theme}"
-                                                  EnableSyntaxHighlighting="True" />
+                            <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333"
+                                       Text="卡片 4 - Python 示例" />
+                            <markd:MarkdownViewer EnableSyntaxHighlighting="True" Theme="{Binding Theme}">
+                                <markd:MarkdownViewer.Markdown>## Python 类示例
+                                    ```python
+                                    class Person:
+                                    def __init__(self, name, age):
+                                    self.name = name
+                                    self.age = age
+                                    def greet(self):
+                                    print(f"Hello, I'm {self.name}")
+                                    person = Person("Alice", 30)
+                                    person.greet()
+                                    ```
+                                    ---
+                                    **注意**: 这只是一个示例代码。</markd:MarkdownViewer.Markdown>
+                            </markd:MarkdownViewer>
+                        </StackPanel>
+                    </Border>
+                    <!-- 卡片 5 - 完整示例 -->
+                    <Border Margin="0,0,0,15" Padding="20" Background="White" BorderBrush="#E0E0E0"
+                            BorderThickness="1" CornerRadius="8">
+                        <StackPanel>
+                            <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333"
+                                       Text="卡片 5 - 完整文档示例" />
+                            <markd:MarkdownViewer EnableSyntaxHighlighting="True"
+                                                  Markdown="{Binding Content}"
+                                                  Theme="{Binding Theme}" />
                         </StackPanel>
                     </Border>
                 </StackPanel>

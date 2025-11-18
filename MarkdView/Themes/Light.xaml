@@ -4,33 +4,33 @@
     <!-- ==================== 浅色主题 ==================== -->
 
     <!-- 基础颜色 -->
-    <SolidColorBrush x:Key="Markdown.Foreground" Color="#1E1E1E"/>
-    <SolidColorBrush x:Key="Markdown.Background" Color="White"/>
+    <SolidColorBrush x:Key="Markdown.Foreground" Color="#1E1E1E" />
+    <SolidColorBrush x:Key="Markdown.Background" Color="White" />
 
     <!-- 标题 -->
-    <SolidColorBrush x:Key="Markdown.Heading.H1.Foreground" Color="#1A1A1A"/>
-    <SolidColorBrush x:Key="Markdown.Heading.H1.Border" Color="#E0E0E0"/>
-    <SolidColorBrush x:Key="Markdown.Heading.H2.Foreground" Color="#1A1A1A"/>
-    <SolidColorBrush x:Key="Markdown.Heading.H2.Border" Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="Markdown.Heading.H1.Foreground" Color="#1A1A1A" />
+    <SolidColorBrush x:Key="Markdown.Heading.H1.Border" Color="#E0E0E0" />
+    <SolidColorBrush x:Key="Markdown.Heading.H2.Foreground" Color="#1A1A1A" />
+    <SolidColorBrush x:Key="Markdown.Heading.H2.Border" Color="#E0E0E0" />
 
     <!-- 引用块 -->
-    <SolidColorBrush x:Key="Markdown.Quote.Background" Color="#F9F9F9"/>
-    <SolidColorBrush x:Key="Markdown.Quote.Border" Color="#5C9DFF"/>
+    <SolidColorBrush x:Key="Markdown.Quote.Background" Color="#F9F9F9" />
+    <SolidColorBrush x:Key="Markdown.Quote.Border" Color="#5C9DFF" />
 
     <!-- 内联代码 -->
-    <SolidColorBrush x:Key="Markdown.InlineCode.Background" Color="#F0F0F0"/>
-    <SolidColorBrush x:Key="Markdown.InlineCode.Foreground" Color="#E53935"/>
+    <SolidColorBrush x:Key="Markdown.InlineCode.Background" Color="#F0F0F0" />
+    <SolidColorBrush x:Key="Markdown.InlineCode.Foreground" Color="#E53935" />
 
     <!-- 链接 -->
-    <SolidColorBrush x:Key="Markdown.Link.Foreground" Color="#5C9DFF"/>
+    <SolidColorBrush x:Key="Markdown.Link.Foreground" Color="#5C9DFF" />
 
     <!-- 代码块 -->
-    <SolidColorBrush x:Key="Markdown.CodeBlock.Background" Color="#F5F5F5"/>
-    <SolidColorBrush x:Key="Markdown.CodeBlock.Border" Color="#D0D0D0"/>
-    <SolidColorBrush x:Key="Markdown.CodeBlock.Header.Background" Color="#E8E8E8"/>
-    <SolidColorBrush x:Key="Markdown.CodeBlock.Language.Foreground" Color="#505050"/>
-    <SolidColorBrush x:Key="Markdown.CodeBlock.CopyButton.Background" Color="#D8D8D8"/>
-    <SolidColorBrush x:Key="Markdown.CodeBlock.CopyButton.Foreground" Color="#2C2C2C"/>
-    <SolidColorBrush x:Key="Markdown.CodeBlock.Foreground" Color="#1E1E1E"/>
+    <SolidColorBrush x:Key="Markdown.CodeBlock.Background" Color="#F5F5F5" />
+    <SolidColorBrush x:Key="Markdown.CodeBlock.Border" Color="#D0D0D0" />
+    <SolidColorBrush x:Key="Markdown.CodeBlock.Header.Background" Color="#E8E8E8" />
+    <SolidColorBrush x:Key="Markdown.CodeBlock.Language.Foreground" Color="#505050" />
+    <SolidColorBrush x:Key="Markdown.CodeBlock.CopyButton.Background" Color="#D8D8D8" />
+    <SolidColorBrush x:Key="Markdown.CodeBlock.CopyButton.Foreground" Color="#2C2C2C" />
+    <SolidColorBrush x:Key="Markdown.CodeBlock.Foreground" Color="#1E1E1E" />
 
 </ResourceDictionary>

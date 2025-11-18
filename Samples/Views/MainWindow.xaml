@@ -24,17 +24,12 @@
                     Command="{Binding SwitchToDarkThemeCommand}"
                     Content="深色主题" />
             <Separator Margin="10,0" />
-            <Button Margin="5" Padding="10,5"
-                    Click="OpenScrollViewerTest_Click"
-                    Content="ScrollViewer 测试" />
-            <Button Margin="5" Padding="10,5"
-                    Click="OpenMarkdownListTest_Click"
-                    Content="📝 列表渲染测试" />
+            <Button Margin="5" Padding="10,5" Click="OpenScrollViewerTest_Click" Content="ScrollViewer 测试" />
+            <Button Margin="5" Padding="10,5" Click="OpenMarkdownListTest_Click" Content="📝 列表渲染测试" />
         </StackPanel>
         <!-- MarkdView 控件 - 主题通过属性绑定控制 -->
-        <markd:MarkdownViewer x:Name="MarkdownViewer" Grid.Row="1" Margin="10"
+        <markd:MarkdownViewer x:Name="MarkdownViewer" Grid.Row="1" Margin="10" EnableSyntaxHighlighting="True"
                               Markdown="{Binding Content}"
-                              Theme="{Binding Theme}"
-                              EnableSyntaxHighlighting="True" />
+                              Theme="{Binding Theme}" />
     </Grid>
 </Window>

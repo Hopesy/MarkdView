@@ -4,7 +4,6 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="clr-namespace:Samples.Views"
         xmlns:markd="clr-namespace:MarkdView.Controls;assembly=MarkdView"
-        xmlns:helpers="clr-namespace:MarkdView.Helpers;assembly=MarkdView"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         Title="MarkdView - 列表渲染测试"
         Width="1000"
@@ -75,27 +74,12 @@
                                 </Grid>
                                 <!-- 分隔线 -->
                                 <Border Grid.Row="1" Height="1" Margin="0,0,0,10" Background="#F0F0F0" />
-                                <!-- 测试：显示数据绑定是否工作 -->
-                                <StackPanel Grid.Row="2">
-                                    <TextBlock MaxHeight="100" FontWeight="Bold" Foreground="Red"
-                                               Text="{Binding Content}"
-                                               TextWrapping="Wrap" />
-                                    <TextBlock Margin="0,5,0,0" Foreground="Blue" Text="--- 上面是Content内容 ---" />
-
-                                    <!-- 测试1：固定值 - 使用附加属性 -->
-                                    <TextBlock Text="测试1：固定Markdown值（附加属性）" FontWeight="Bold" Margin="0,10,0,5" />
-                                    <markd:MarkdownViewer EnableSyntaxHighlighting="True"
-                                                          VerticalScrollBarVisibility="Disabled"
-                                                          HorizontalScrollBarVisibility="Disabled"
-                                                          helpers:MarkdownHelper.Markdown="# 固定标题&#x0a;&#x0a;这是**固定**的Markdown内容。" />
-
-                                    <!-- 测试2：绑定值 - 使用附加属性 -->
-                                    <TextBlock Text="测试2：绑定Content值（附加属性）" FontWeight="Bold" Margin="0,10,0,5" />
-                                    <markd:MarkdownViewer EnableSyntaxHighlighting="True"
-                                                          VerticalScrollBarVisibility="Disabled"
-                                                          HorizontalScrollBarVisibility="Disabled"
-                                                          helpers:MarkdownHelper.Markdown="{Binding Content}" />
-                                </StackPanel>
+                                <!-- Markdown内容 -->
+                                <markd:MarkdownViewer Grid.Row="2"
+                                                      Content="{Binding Content}"
+                                                      EnableSyntaxHighlighting="True"
+                                                      VerticalScrollBarVisibility="Disabled"
+                                                      HorizontalScrollBarVisibility="Disabled" />
                             </Grid>
                         </Border>
                     </DataTemplate>

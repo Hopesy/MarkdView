@@ -16,8 +16,80 @@ namespace MarkdView.Controls;
 /// MarkdView - 现代化 WPF Markdown 渲染控件
 /// 基于 MVVM 架构，支持流式渲染、语法高亮、主题切换
 /// </summary>
-public partial class MarkdownViewer : UserControl
+public class MarkdownViewer : ContentControl
 {
+    static MarkdownViewer()
+    {
+        Console.WriteLine($"[MarkdownViewer] Static constructor called");
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(MarkdownViewer),
+            new FrameworkPropertyMetadata(typeof(MarkdownViewer)));
+        Console.WriteLine($"[MarkdownViewer] DefaultStyleKey set to: {typeof(MarkdownViewer)}");
+
+        // 直接在代码中设置模板（作为后备方案）
+        var factory = new FrameworkElementFactory(typeof(Border));
+        factory.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(BackgroundProperty));
+
+        var gridFactory = new FrameworkElementFactory(typeof(Grid));
+        factory.AppendChild(gridFactory);
+
+        var scrollViewerFactory = new FrameworkElementFactory(typeof(FlowDocumentScrollViewer));
+        scrollViewerFactory.Name = "PART_MarkdownDocument";
+        scrollViewerFactory.SetValue(FlowDocumentScrollViewer.BackgroundProperty, System.Windows.Media.Brushes.Transparent);
+        scrollViewerFactory.SetValue(FlowDocumentScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Auto);
+        scrollViewerFactory.SetValue(FlowDocumentScrollViewer.HorizontalScrollBarVisibilityProperty, ScrollBarVisibility.Auto);
+        scrollViewerFactory.SetValue(FlowDocumentScrollViewer.IsToolBarVisibleProperty, false);
+        gridFactory.AppendChild(scrollViewerFactory);
+
+        var template = new ControlTemplate(typeof(MarkdownViewer)) { VisualTree = factory };
+
+        var style = new Style(typeof(MarkdownViewer));
+        style.Setters.Add(new Setter(TemplateProperty, template));
+        style.Setters.Add(new Setter(BackgroundProperty, System.Windows.Media.Brushes.Transparent));
+
+        StyleProperty.OverrideMetadata(typeof(MarkdownViewer), new FrameworkPropertyMetadata(style));
+        Console.WriteLine($"[MarkdownViewer] Template set in code");
+    }
+
+    protected override void OnContentChanged(object oldContent, object newContent)
+    {
+        base.OnContentChanged(oldContent, newContent);
+
+        var markdownText = newContent as string ?? string.Empty;
+        Console.WriteLine($"[MarkdownViewer] OnContentChanged: newText length={markdownText.Length}");
+
+        if (!_isUpdatingFromViewModel && _internalViewModel != null)
+        {
+            // 同步到内部ViewModel
+            _internalViewModel.Markdown = markdownText;
+
+            // 保存待渲染的文本
+            _lastRenderedText = markdownText;
+
+            // 如果MarkdownDocument还没初始化，等待OnApplyTemplate
+            if (MarkdownDocument == null)
+            {
+                Console.WriteLine($"[MarkdownViewer] OnContentChanged: MarkdownDocument is NULL, waiting");
+                return;
+            }
+
+            // 在列表场景中（滚动条禁用），总是立即渲染
+            var isListScenario = VerticalScrollBarVisibility == ScrollBarVisibility.Disabled;
+
+            if (EnableStreaming && !isListScenario)
+            {
+                // 流式渲染（仅在非列表场景）
+                _pendingText = markdownText;
+                _hasPendingUpdate = true;
+                _updateTimer.Stop();
+                _updateTimer.Start();
+            }
+            else
+            {
+                // 立即渲染
+                RenderMarkdown();
+            }
+        }
+    }
     #region 依赖属性
 
     public static readonly DependencyProperty MarkdownProperty =
@@ -183,6 +255,18 @@ public partial class MarkdownViewer : UserControl
     private MarkdownViewModel _internalViewModel;
     private bool _isUpdatingFromViewModel;
 
+    // 模板元素
+    private FlowDocumentScrollViewer? _markdownDocument;
+    private FlowDocumentScrollViewer? MarkdownDocument
+    {
+        get => _markdownDocument;
+        set
+        {
+            Console.WriteLine($"[MarkdownViewer] MarkdownDocument setter: old={_markdownDocument != null}, new={value != null}, Stack={Environment.StackTrace.Split('\n')[1].Trim()}");
+            _markdownDocument = value;
+        }
+    }
+
     // 缓存父级ScrollViewer，用于滚轮事件处理
     private ScrollViewer? _cachedParentScrollViewer;
     private bool _hasSearchedForParent;
@@ -197,10 +281,6 @@ public partial class MarkdownViewer : UserControl
     public MarkdownViewer()
     {
         Console.WriteLine($"[MarkdownViewer] Constructor START");
-
-        InitializeComponent();
-
-        Console.WriteLine($"[MarkdownViewer] InitializeComponent done, MarkdownDocument={MarkdownDocument != null}");
 
         // 初始化内部 ViewModel（先不赋值给ViewModel属性，避免触发回调）
         _internalViewModel = new MarkdownViewModel();
@@ -226,13 +306,6 @@ public partial class MarkdownViewer : UserControl
         };
         _updateTimer.Tick += OnUpdateTimerTick;
 
-        // 处理滚轮事件冒泡
-        MarkdownDocument.PreviewMouseWheel += OnPreviewMouseWheel;
-
-        // 同步滚动条可见性
-        MarkdownDocument.VerticalScrollBarVisibility = VerticalScrollBarVisibility;
-        MarkdownDocument.HorizontalScrollBarVisibility = HorizontalScrollBarVisibility;
-
         // 订阅 ViewModel 事件
         SubscribeToViewModel(_internalViewModel);
 
@@ -249,9 +322,40 @@ public partial class MarkdownViewer : UserControl
         ThemeManager.ApplyTheme(Theme);
 
         Console.WriteLine($"[MarkdownViewer] Constructor END");
+    }
 
-        // 不要在构造函数中渲染，等待Markdown属性绑定完成后再渲染
-        // RenderMarkdown();
+    public override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+
+        Console.WriteLine($"[MarkdownViewer] OnApplyTemplate START");
+
+        // 从模板中获取 FlowDocumentScrollViewer
+        if (GetTemplateChild("PART_MarkdownDocument") is FlowDocumentScrollViewer documentViewer)
+        {
+            MarkdownDocument = documentViewer;
+            Console.WriteLine($"[MarkdownViewer] OnApplyTemplate: MarkdownDocument found");
+
+            // 处理滚轮事件冒泡
+            MarkdownDocument.PreviewMouseWheel += OnPreviewMouseWheel;
+
+            // 同步滚动条可见性
+            MarkdownDocument.VerticalScrollBarVisibility = VerticalScrollBarVisibility;
+            MarkdownDocument.HorizontalScrollBarVisibility = HorizontalScrollBarVisibility;
+
+            // 如果已经有Markdown内容，触发渲染
+            if (!string.IsNullOrEmpty(Markdown))
+            {
+                _lastRenderedText = Markdown;
+                RenderMarkdown();
+            }
+        }
+        else
+        {
+            Console.WriteLine($"[MarkdownViewer] OnApplyTemplate: MarkdownDocument NOT found");
+        }
+
+        Console.WriteLine($"[MarkdownViewer] OnApplyTemplate END");
     }
 
     #endregion

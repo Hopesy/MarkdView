@@ -17,7 +17,10 @@
       "Bash(taskkill:*)",
       "Bash(dotnet build:*)",
       "Bash(dotnet run)",
-      "Bash(Select-String \"OnMarkdownChanged\")"
+      "Bash(Select-String \"OnMarkdownChanged\")",
+      "Bash(Select-String \"OnApplyTemplate|Static constructor|Constructor END|MarkdownDocument found\")",
+      "Bash(tasklist:*)",
+      "Bash(cmd //c \"taskkill //F //PID 43788\")"
     ],
     "deny": [],
     "ask": []
