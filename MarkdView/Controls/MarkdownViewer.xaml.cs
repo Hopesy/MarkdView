@@ -57,47 +57,34 @@ public class MarkdownViewer : ContentControl
         var markdownText = newContent as string ?? string.Empty;
         Console.WriteLine($"[MarkdownViewer] OnContentChanged: newText length={markdownText.Length}");
 
-        if (!_isUpdatingFromViewModel && _internalViewModel != null)
+        // 保存待渲染的文本
+        _lastRenderedText = markdownText;
+
+        // 如果MarkdownDocument还没初始化，等待OnApplyTemplate
+        if (MarkdownDocument == null)
         {
-            // 同步到内部ViewModel
-            _internalViewModel.Markdown = markdownText;
+            Console.WriteLine($"[MarkdownViewer] OnContentChanged: MarkdownDocument is NULL, waiting");
+            return;
+        }
 
-            // 保存待渲染的文本
-            _lastRenderedText = markdownText;
+        // 在列表场景中（滚动条禁用），总是立即渲染
+        var isListScenario = VerticalScrollBarVisibility == ScrollBarVisibility.Disabled;
 
-            // 如果MarkdownDocument还没初始化，等待OnApplyTemplate
-            if (MarkdownDocument == null)
-            {
-                Console.WriteLine($"[MarkdownViewer] OnContentChanged: MarkdownDocument is NULL, waiting");
-                return;
-            }
-
-            // 在列表场景中（滚动条禁用），总是立即渲染
-            var isListScenario = VerticalScrollBarVisibility == ScrollBarVisibility.Disabled;
-
-            if (EnableStreaming && !isListScenario)
-            {
-                // 流式渲染（仅在非列表场景）
-                _pendingText = markdownText;
-                _hasPendingUpdate = true;
-                _updateTimer.Stop();
-                _updateTimer.Start();
-            }
-            else
-            {
-                // 立即渲染
-                RenderMarkdown();
-            }
+        if (EnableStreaming && !isListScenario)
+        {
+            // 流式渲染（仅在非列表场景）
+            _pendingText = markdownText;
+            _hasPendingUpdate = true;
+            _updateTimer.Stop();
+            _updateTimer.Start();
+        }
+        else
+        {
+            // 立即渲染
+            RenderMarkdown();
         }
     }
     #region 依赖属性
-
-    public static readonly DependencyProperty MarkdownProperty =
-        DependencyProperty.Register(
-            nameof(Markdown),
-            typeof(string),
-            typeof(MarkdownViewer),
-            new PropertyMetadata(string.Empty, OnMarkdownChanged));
 
     public static readonly DependencyProperty EnableStreamingProperty =
         DependencyProperty.Register(
@@ -141,13 +128,6 @@ public class MarkdownViewer : ContentControl
             typeof(MarkdownViewer),
             new PropertyMetadata(14.0, OnFontSizeChanged));
 
-    public static readonly DependencyProperty ViewModelProperty =
-        DependencyProperty.Register(
-            nameof(ViewModel),
-            typeof(MarkdownViewModel),
-            typeof(MarkdownViewer),
-            new PropertyMetadata(null, OnViewModelChanged));
-
     public static readonly DependencyProperty VerticalScrollBarVisibilityProperty =
         DependencyProperty.Register(
             nameof(VerticalScrollBarVisibility),
@@ -165,12 +145,6 @@ public class MarkdownViewer : ContentControl
     #endregion
 
     #region 公共属性
-
-    public string Markdown
-    {
-        get => (string)GetValue(MarkdownProperty);
-        set => SetValue(MarkdownProperty, value);
-    }
 
     public bool EnableStreaming
     {
@@ -209,15 +183,6 @@ public class MarkdownViewer : ContentControl
     }
 
     /// <summary>
-    /// ViewModel - 可以从外部注入或使用内部默认的
-    /// </summary>
-    public MarkdownViewModel ViewModel
-    {
-        get => (MarkdownViewModel)GetValue(ViewModelProperty);
-        set => SetValue(ViewModelProperty, value);
-    }
-
-    /// <summary>
     /// 垂直滚动条可见性
     /// </summary>
     public ScrollBarVisibility VerticalScrollBarVisibility
@@ -251,10 +216,6 @@ public class MarkdownViewer : ContentControl
     // 服务
     private readonly MarkdownRenderer _renderingService;
 
-    // ViewModel
-    private MarkdownViewModel _internalViewModel;
-    private bool _isUpdatingFromViewModel;
-
     // 模板元素
     private FlowDocumentScrollViewer? _markdownDocument;
     private FlowDocumentScrollViewer? MarkdownDocument
@@ -282,9 +243,6 @@ public class MarkdownViewer : ContentControl
     {
         Console.WriteLine($"[MarkdownViewer] Constructor START");
 
-        // 初始化内部 ViewModel（先不赋值给ViewModel属性，避免触发回调）
-        _internalViewModel = new MarkdownViewModel();
-
         // 配置 Markdig 管道
         _pipeline = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
@@ -296,18 +254,12 @@ public class MarkdownViewer : ContentControl
         // 初始化渲染服务
         _renderingService = new MarkdownRenderer(_pipeline);
 
-        // 现在可以安全地设置ViewModel了（_renderingService已初始化）
-        ViewModel = _internalViewModel;
-
         // 配置流式渲染定时器
         _updateTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(StreamingThrottle)
         };
         _updateTimer.Tick += OnUpdateTimerTick;
-
-        // 订阅 ViewModel 事件
-        SubscribeToViewModel(_internalViewModel);
 
         // 订阅 Loaded 事件，用于延迟初始化
         this.Loaded += OnLoaded;
@@ -318,8 +270,8 @@ public class MarkdownViewer : ContentControl
         // 订阅 LayoutUpdated 事件，用于检测绑定完成
         this.LayoutUpdated += OnLayoutUpdated;
 
-        // 应用默认主题
-        ThemeManager.ApplyTheme(Theme);
+        // 订阅主题应用完成事件
+        ThemeManager.ThemeApplied += OnThemeApplied;
 
         Console.WriteLine($"[MarkdownViewer] Constructor END");
     }
@@ -343,10 +295,11 @@ public class MarkdownViewer : ContentControl
             MarkdownDocument.VerticalScrollBarVisibility = VerticalScrollBarVisibility;
             MarkdownDocument.HorizontalScrollBarVisibility = HorizontalScrollBarVisibility;
 
-            // 如果已经有Markdown内容，触发渲染
-            if (!string.IsNullOrEmpty(Markdown))
+            // 如果已经有Content内容，触发渲染
+            var contentText = Content as string ?? string.Empty;
+            if (!string.IsNullOrEmpty(contentText))
             {
-                _lastRenderedText = Markdown;
+                _lastRenderedText = contentText;
                 RenderMarkdown();
             }
         }
@@ -360,220 +313,55 @@ public class MarkdownViewer : ContentControl
 
     #endregion
 
-    #region ViewModel 事件订阅
-
-    private void SubscribeToViewModel(MarkdownViewModel viewModel)
-    {
-        if (viewModel == null) return;
-
-        viewModel.MarkdownChanged += OnViewModelMarkdownChanged;
-        viewModel.ThemeChanged += OnViewModelThemeChanged;
-        viewModel.RenderingSettingsChanged += OnViewModelRenderingSettingsChanged;
-    }
-
-    private void UnsubscribeFromViewModel(MarkdownViewModel viewModel)
-    {
-        if (viewModel == null) return;
-
-        viewModel.MarkdownChanged -= OnViewModelMarkdownChanged;
-        viewModel.ThemeChanged -= OnViewModelThemeChanged;
-        viewModel.RenderingSettingsChanged -= OnViewModelRenderingSettingsChanged;
-    }
-
-    private void OnViewModelMarkdownChanged(object? sender, EventArgs e)
-    {
-        if (_isUpdatingFromViewModel) return;
-
-        Console.WriteLine($"[MarkdownViewer] OnViewModelMarkdownChanged: newText length={_internalViewModel.Markdown.Length}");
-
-        _isUpdatingFromViewModel = true;
-        try
-        {
-            Markdown = _internalViewModel.Markdown;
-            _lastRenderedText = _internalViewModel.Markdown;
-        }
-        finally
-        {
-            _isUpdatingFromViewModel = false;
-        }
-
-        // 在列表场景中（滚动条禁用），总是立即渲染，不使用流式渲染
-        var isListScenario = VerticalScrollBarVisibility == ScrollBarVisibility.Disabled;
-
-        // 触发重新渲染
-        if (EnableStreaming && !isListScenario)
-        {
-            _pendingText = _lastRenderedText;
-            _hasPendingUpdate = true;
-            _updateTimer.Stop();
-            _updateTimer.Start();
-        }
-        else
-        {
-            RenderMarkdown();
-        }
-    }
-
-    private void OnViewModelThemeChanged(object? sender, EventArgs e)
-    {
-        if (_isUpdatingFromViewModel) return;
-
-        _isUpdatingFromViewModel = true;
-        try
-        {
-            RenderMarkdown();
-        }
-        finally
-        {
-            _isUpdatingFromViewModel = false;
-        }
-    }
-
-    private void OnViewModelRenderingSettingsChanged(object? sender, EventArgs e)
-    {
-        if (_isUpdatingFromViewModel) return;
-
-        _isUpdatingFromViewModel = true;
-        try
-        {
-            RenderMarkdown();
-        }
-        finally
-        {
-            _isUpdatingFromViewModel = false;
-        }
-    }
-
-    #endregion
-
     #region 依赖属性回调
-
-    private static void OnMarkdownChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var newText = e.NewValue as string ?? string.Empty;
-        Console.WriteLine($"[MarkdownViewer] OnMarkdownChanged CALLED: newText length={newText.Length}, isViewer={d is MarkdownViewer}");
-
-        if (d is MarkdownViewer viewer && !viewer._isUpdatingFromViewModel && viewer._internalViewModel != null)
-        {
-            // 调试输出：追踪Markdown属性变化
-            Console.WriteLine($"[MarkdownViewer] OnMarkdownChanged PASSED: newText length={newText.Length}, MarkdownDocument={viewer.MarkdownDocument != null}");
-
-            // 同步到 ViewModel
-            viewer._internalViewModel.Markdown = newText;
-
-            // 在列表场景中（滚动条禁用），总是立即渲染，不使用流式渲染
-            // 使用依赖属性而不是MarkdownDocument的值，因为属性设置有顺序
-            var isListScenario = viewer.VerticalScrollBarVisibility == ScrollBarVisibility.Disabled;
-
-            // 保存待渲染的文本
-            viewer._lastRenderedText = newText;
-
-            // 如果MarkdownDocument还没初始化，等待Loaded事件
-            if (viewer.MarkdownDocument == null)
-            {
-                Console.WriteLine($"[MarkdownViewer] OnMarkdownChanged: MarkdownDocument is NULL, waiting for Loaded");
-                return;
-            }
-
-            if (viewer.EnableStreaming && !isListScenario)
-            {
-                // 流式渲染（仅在非列表场景）
-                viewer._pendingText = newText;
-                viewer._hasPendingUpdate = true;
-                viewer._updateTimer.Stop();
-                viewer._updateTimer.Start();
-            }
-            else
-            {
-                // 立即渲染
-                viewer.RenderMarkdown();
-            }
-        }
-        else if (d is MarkdownViewer viewer2)
-        {
-            Console.WriteLine($"[MarkdownViewer] OnMarkdownChanged BLOCKED: isUpdatingFromViewModel={viewer2._isUpdatingFromViewModel}, hasViewModel={viewer2._internalViewModel != null}");
-        }
-    }
 
     private static void OnEnableStreamingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is MarkdownViewer viewer && viewer._internalViewModel != null)
-        {
-            viewer._internalViewModel.EnableStreaming = (bool)e.NewValue;
-        }
+        // EnableStreaming 变化时不需要重新渲染，只影响后续更新行为
     }
 
     private static void OnStreamingThrottleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is MarkdownViewer viewer && viewer._internalViewModel != null)
+        if (d is MarkdownViewer viewer)
         {
             var throttle = (int)e.NewValue;
-            viewer._internalViewModel.StreamingThrottle = throttle;
             viewer._updateTimer.Interval = TimeSpan.FromMilliseconds(throttle);
         }
     }
 
     private static void OnEnableSyntaxHighlightingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is MarkdownViewer viewer && viewer._internalViewModel != null)
+        if (d is MarkdownViewer viewer)
         {
-            viewer._internalViewModel.EnableSyntaxHighlighting = (bool)e.NewValue;
-            // RenderingSettingsChanged 事件会触发重新渲染
+            // 语法高亮设置变化，触发重新渲染
+            viewer.RenderMarkdown();
         }
     }
 
     private static void OnThemeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is MarkdownViewer viewer && !viewer._isUpdatingFromViewModel && viewer._internalViewModel != null)
+        if (d is MarkdownViewer viewer)
         {
             var newTheme = (ThemeMode)e.NewValue;
-            Console.WriteLine($"[MarkdownViewer] OnThemeChanged: Theme property changed to {newTheme}");
-
-            viewer._internalViewModel.Theme = newTheme;
-
-            // 应用主题到全局资源
-            Console.WriteLine($"[MarkdownViewer] OnThemeChanged: Calling ThemeManager.ApplyTheme({newTheme})");
             ThemeManager.ApplyTheme(newTheme);
         }
     }
 
     private static void OnFontFamilyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is MarkdownViewer viewer && viewer._internalViewModel != null)
+        if (d is MarkdownViewer viewer)
         {
-            viewer._internalViewModel.FontFamily = (FontFamily)e.NewValue;
-            // RenderingSettingsChanged 事件会触发重新渲染
+            // 字体变化，触发重新渲染
+            viewer.RenderMarkdown();
         }
     }
 
     private static void OnFontSizeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is MarkdownViewer viewer && viewer._internalViewModel != null)
-        {
-            viewer._internalViewModel.FontSize = (double)e.NewValue;
-            // RenderingSettingsChanged 事件会触发重新渲染
-        }
-    }
-
-    private static void OnViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
         if (d is MarkdownViewer viewer)
         {
-            // 取消订阅旧 ViewModel
-            if (e.OldValue is MarkdownViewModel oldViewModel)
-            {
-                viewer.UnsubscribeFromViewModel(oldViewModel);
-            }
-
-            // 订阅新 ViewModel
-            if (e.NewValue is MarkdownViewModel newViewModel)
-            {
-                viewer._internalViewModel = newViewModel;
-                viewer.SubscribeToViewModel(newViewModel);
-
-                // 同步状态
-                viewer.SyncFromViewModel();
-            }
+            // 字号变化，触发重新渲染
+            viewer.RenderMarkdown();
         }
     }
 
@@ -637,9 +425,9 @@ public class MarkdownViewer : ContentControl
     private void RenderMarkdown()
     {
         // 确保所有必需的服务和控件已初始化
-        if (_renderingService == null || _internalViewModel == null || MarkdownDocument == null)
+        if (_renderingService == null || MarkdownDocument == null)
         {
-            Console.WriteLine($"[MarkdownViewer] RenderMarkdown SKIPPED: renderingService={_renderingService != null}, viewModel={_internalViewModel != null}, document={MarkdownDocument != null}");
+            Console.WriteLine($"[MarkdownViewer] RenderMarkdown SKIPPED: renderingService={_renderingService != null}, document={MarkdownDocument != null}");
             return;
         }
 
@@ -649,15 +437,15 @@ public class MarkdownViewer : ContentControl
         {
             // 创建代码块渲染器
             var codeBlockRenderer = new Renderers.CodeBlockRenderer(
-                _internalViewModel.EnableSyntaxHighlighting,
-                _internalViewModel.Theme);
+                EnableSyntaxHighlighting,
+                Theme);
 
             // 使用渲染服务转换 Markdown
             var flowDocument = _renderingService.ConvertMarkdownToFlowDocument(
                 _lastRenderedText,
-                _internalViewModel.FontFamily,
-                _internalViewModel.FontSize,
-                _internalViewModel.EnableSyntaxHighlighting,
+                FontFamily,
+                FontSize,
+                EnableSyntaxHighlighting,
                 codeBlockRenderer);
 
             Console.WriteLine($"[MarkdownViewer] FlowDocument created with {flowDocument.Blocks.Count} blocks");
@@ -693,7 +481,7 @@ public class MarkdownViewer : ContentControl
     /// </summary>
     private void ConfigureFlowDocument(FlowDocument document)
     {
-        if (document == null) return;
+        if (document == null || MarkdownDocument == null) return;
 
         // 如果禁用了垂直滚动条（列表场景），设置页面为自动高度
         if (VerticalScrollBarVisibility == ScrollBarVisibility.Disabled)
@@ -709,36 +497,17 @@ public class MarkdownViewer : ContentControl
         }
     }
 
-    /// <summary>
-    /// 从 ViewModel 同步状态到依赖属性
-    /// </summary>
-    private void SyncFromViewModel()
-    {
-        _isUpdatingFromViewModel = true;
-        try
-        {
-            Markdown = _internalViewModel.Markdown;
-            Theme = _internalViewModel.Theme;
-            EnableSyntaxHighlighting = _internalViewModel.EnableSyntaxHighlighting;
-            EnableStreaming = _internalViewModel.EnableStreaming;
-            StreamingThrottle = _internalViewModel.StreamingThrottle;
-            FontFamily = _internalViewModel.FontFamily;
-            FontSize = _internalViewModel.FontSize;
-
-            // 直接更新渲染文本，因为 OnMarkdownChanged 被 _isUpdatingFromViewModel 跳过了
-            _lastRenderedText = _internalViewModel.Markdown;
-        }
-        finally
-        {
-            _isUpdatingFromViewModel = false;
-        }
-
-        RenderMarkdown();
-    }
-
     #endregion
 
     #region 事件处理
+
+    /// <summary>
+    /// 主题应用完成事件 - ThemeManager 替换资源字典后触发
+    /// </summary>
+    private void OnThemeApplied(object? sender, EventArgs e)
+    {
+        RenderMarkdown();
+    }
 
     /// <summary>
     /// DataContext变化事件 - 数据绑定生效时触发
@@ -750,13 +519,14 @@ public class MarkdownViewer : ContentControl
         // 延迟一点等待绑定完成
         Dispatcher.InvokeAsync(() =>
         {
-            Console.WriteLine($"[MarkdownViewer] OnDataContextChanged (delayed): Markdown length={Markdown?.Length ?? 0}");
+            var contentText = Content as string ?? string.Empty;
+            Console.WriteLine($"[MarkdownViewer] OnDataContextChanged (delayed): Markdown length={contentText.Length}");
 
-            // 如果Markdown有值但还没渲染，强制渲染
-            if (!string.IsNullOrEmpty(Markdown) && MarkdownDocument?.Document == null)
+            // 如果Content有值但还没渲染，强制渲染
+            if (!string.IsNullOrEmpty(contentText) && MarkdownDocument?.Document == null)
             {
                 Console.WriteLine($"[MarkdownViewer] OnDataContextChanged: Forcing render");
-                _lastRenderedText = Markdown;
+                _lastRenderedText = contentText;
                 RenderMarkdown();
             }
         }, System.Windows.Threading.DispatcherPriority.Loaded);
@@ -770,12 +540,13 @@ public class MarkdownViewer : ContentControl
         // 只检查一次，避免无限循环
         if (_hasCheckedBindingAfterLoad) return;
 
-        // 如果有Markdown内容但还没渲染，强制渲染
-        if (!string.IsNullOrEmpty(Markdown) && MarkdownDocument?.Document == null)
+        var contentText = Content as string ?? string.Empty;
+        // 如果有Content内容但还没渲染，强制渲染
+        if (!string.IsNullOrEmpty(contentText) && MarkdownDocument?.Document == null)
         {
-            Console.WriteLine($"[MarkdownViewer] OnLayoutUpdated: Detected Markdown length={Markdown.Length}, forcing render");
+            Console.WriteLine($"[MarkdownViewer] OnLayoutUpdated: Detected Markdown length={contentText.Length}, forcing render");
             _hasCheckedBindingAfterLoad = true;
-            _lastRenderedText = Markdown;
+            _lastRenderedText = contentText;
             RenderMarkdown();
         }
     }
@@ -785,7 +556,8 @@ public class MarkdownViewer : ContentControl
     /// </summary>
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        Console.WriteLine($"[MarkdownViewer] OnLoaded: Markdown length={Markdown?.Length ?? 0}, _lastRenderedText length={_lastRenderedText.Length}, Document={MarkdownDocument?.Document != null}");
+        var contentText = Content as string ?? string.Empty;
+        Console.WriteLine($"[MarkdownViewer] OnLoaded: Markdown length={contentText.Length}, _lastRenderedText length={_lastRenderedText.Length}, Document={MarkdownDocument?.Document != null}");
 
         // 查找并缓存父级 ScrollViewer
         if (!_hasSearchedForParent)

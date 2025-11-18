@@ -5,12 +5,35 @@ using System.Windows;
 namespace MarkdView.Services.Theme;
 
 /// <summary>
-/// 主题管理器 - 负责通过切换资源字典来管理主题
+/// 主题管理器 - 负责通过切换资源字典来管理全局主题
 /// </summary>
 public static class ThemeManager
 {
     private const string LightThemeUri = "pack://application:,,,/MarkdView;component/Themes/Light.xaml";
     private const string DarkThemeUri = "pack://application:,,,/MarkdView;component/Themes/Dark.xaml";
+
+    /// <summary>
+    /// 主题应用完成事件 - 当主题资源字典被替换后触发
+    /// </summary>
+    public static event EventHandler? ThemeApplied;
+
+    /// <summary>
+    /// 获取当前应用的主题（通过检查已加载的资源字典）
+    /// </summary>
+    public static ThemeMode GetCurrentTheme()
+    {
+        var existingTheme = Application.Current.Resources.MergedDictionaries
+            .FirstOrDefault(d => d.Source != null &&
+                (d.Source.ToString().Contains("Light.xaml") ||
+                 d.Source.ToString().Contains("Dark.xaml")));
+
+        if (existingTheme != null && existingTheme.Source.ToString().Contains("Light.xaml"))
+        {
+            return ThemeMode.Light;
+        }
+
+        return ThemeMode.Dark;
+    }
 
     /// <summary>
     /// 应用指定主题
@@ -43,6 +66,9 @@ public static class ThemeManager
 
             // 添加新的主题资源字典
             Application.Current.Resources.MergedDictionaries.Add(newTheme);
+
+            // 触发主题应用完成事件
+            ThemeApplied?.Invoke(null, EventArgs.Empty);
         }
         catch (Exception ex)
         {

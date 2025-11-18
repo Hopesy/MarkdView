@@ -56,14 +56,14 @@
                         <StackPanel>
                             <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333"
                                        Text="卡片 1 - 基础 Markdown" />
-                            <markd:MarkdownViewer EnableSyntaxHighlighting="True" Theme="{Binding Theme}">
-                                <markd:MarkdownViewer.Markdown># 标题示例
+                            <markd:MarkdownViewer EnableSyntaxHighlighting="True">
+                                <markd:MarkdownViewer.Content># 标题示例
                                     这是一个**粗体**文本和*斜体*文本的示例。
                                     ## 列表示例
                                     - 第一项
                                     - 第二项
                                     - 第三项
-                                    > 这是一个引用块示例</markd:MarkdownViewer.Markdown>
+                                    > 这是一个引用块示例</markd:MarkdownViewer.Content>
                             </markd:MarkdownViewer>
                         </StackPanel>
                     </Border>
@@ -73,8 +73,8 @@
                         <StackPanel>
                             <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333"
                                        Text="卡片 2 - 代码块示例" />
-                            <markd:MarkdownViewer EnableSyntaxHighlighting="True" Theme="{Binding Theme}">
-                                <markd:MarkdownViewer.Markdown>## C# 代码示例
+                            <markd:MarkdownViewer EnableSyntaxHighlighting="True">
+                                <markd:MarkdownViewer.Content>## C# 代码示例
                                     ```csharp
                                     public class HelloWorld
                                     {
@@ -84,7 +84,7 @@
                                     }
                                     }
                                     ```
-                                    这是一个 `行内代码` 示例。</markd:MarkdownViewer.Markdown>
+                                    这是一个 `行内代码` 示例。</markd:MarkdownViewer.Content>
                             </markd:MarkdownViewer>
                         </StackPanel>
                     </Border>
@@ -94,8 +94,8 @@
                         <StackPanel>
                             <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333"
                                        Text="卡片 3 - JavaScript 示例" />
-                            <markd:MarkdownViewer EnableSyntaxHighlighting="True" Theme="{Binding Theme}">
-                                <markd:MarkdownViewer.Markdown>
+                            <markd:MarkdownViewer EnableSyntaxHighlighting="True">
+                                <markd:MarkdownViewer.Content>
                                     <![CDATA[## JavaScript 函数
 
 ```javascript
@@ -109,7 +109,7 @@ console.log(fibonacci(10));
 
 ### 链接示例
 访问 [GitHub](https://github.com) 了解更多。]]>
-                                </markd:MarkdownViewer.Markdown>
+                                </markd:MarkdownViewer.Content>
                             </markd:MarkdownViewer>
                         </StackPanel>
                     </Border>
@@ -119,8 +119,8 @@ console.log(fibonacci(10));
                         <StackPanel>
                             <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333"
                                        Text="卡片 4 - Python 示例" />
-                            <markd:MarkdownViewer EnableSyntaxHighlighting="True" Theme="{Binding Theme}">
-                                <markd:MarkdownViewer.Markdown>## Python 类示例
+                            <markd:MarkdownViewer EnableSyntaxHighlighting="True">
+                                <markd:MarkdownViewer.Content>## Python 类示例
                                     ```python
                                     class Person:
                                     def __init__(self, name, age):
@@ -132,7 +132,7 @@ console.log(fibonacci(10));
                                     person.greet()
                                     ```
                                     ---
-                                    **注意**: 这只是一个示例代码。</markd:MarkdownViewer.Markdown>
+                                    **注意**: 这只是一个示例代码。</markd:MarkdownViewer.Content>
                             </markd:MarkdownViewer>
                         </StackPanel>
                     </Border>
@@ -143,8 +143,8 @@ console.log(fibonacci(10));
                             <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333"
                                        Text="卡片 5 - 完整文档示例" />
                             <markd:MarkdownViewer EnableSyntaxHighlighting="True"
-                                                  Markdown="{Binding Content}"
-                                                  Theme="{Binding Theme}" />
+                                                  Content="{Binding Content}"
+                                                  />
                         </StackPanel>
                     </Border>
                 </StackPanel>

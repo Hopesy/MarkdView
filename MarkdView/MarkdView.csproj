@@ -38,10 +38,4 @@
     <Resource Include="Themes\Dark.xaml" />
     <Resource Include="Themes\Light.xaml" />
   </ItemGroup>
-  <ItemGroup>
-    <None Update="icon.png">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-  </ItemGroup>
 </Project>

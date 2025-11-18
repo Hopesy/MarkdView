@@ -16,9 +16,6 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private string _content = string.Empty;
 
-    [ObservableProperty]
-    private ThemeMode _theme = ThemeMode.Dark;
-
     public MainWindowViewModel()
     {
         // 加载示例文件
@@ -26,21 +23,21 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 切换到浅色主题
+    /// 切换到浅色主题 - 直接调用全局 ThemeManager
     /// </summary>
     [RelayCommand]
     private void SwitchToLightTheme()
     {
-        Theme = ThemeMode.Light;
+        ThemeManager.ApplyTheme(ThemeMode.Light);
     }
 
     /// <summary>
-    /// 切换到深色主题
+    /// 切换到深色主题 - 直接调用全局 ThemeManager
     /// </summary>
     [RelayCommand]
     private void SwitchToDarkTheme()
     {
-        Theme = ThemeMode.Dark;
+        ThemeManager.ApplyTheme(ThemeMode.Dark);
     }
 
     /// <summary>

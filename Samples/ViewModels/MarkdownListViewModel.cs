@@ -16,9 +16,6 @@ public partial class MarkdownListViewModel : ObservableObject
     private ObservableCollection<MarkdownItem> _items = new();
 
     [ObservableProperty]
-    private ThemeMode _theme = ThemeMode.Dark;
-
-    [ObservableProperty]
     private bool _isEmpty = true;
 
     public MarkdownListViewModel()
@@ -43,21 +40,21 @@ public partial class MarkdownListViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 切换到浅色主题
+    /// 切换到浅色主题 - 直接调用全局 ThemeManager
     /// </summary>
     [RelayCommand]
     private void SwitchToLightTheme()
     {
-        Theme = ThemeMode.Light;
+        ThemeManager.ApplyTheme(ThemeMode.Light);
     }
 
     /// <summary>
-    /// 切换到深色主题
+    /// 切换到深色主题 - 直接调用全局 ThemeManager
     /// </summary>
     [RelayCommand]
     private void SwitchToDarkTheme()
     {
-        Theme = ThemeMode.Dark;
+        ThemeManager.ApplyTheme(ThemeMode.Dark);
     }
 }
 

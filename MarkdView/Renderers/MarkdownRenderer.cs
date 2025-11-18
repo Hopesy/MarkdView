@@ -518,13 +518,16 @@ public class MarkdownRenderer
     /// </summary>
     private void SetDynamicResource(FrameworkContentElement element, DependencyProperty property, string resourceKey, object defaultValue)
     {
-        // 先确保资源字典中有这个键（如果没有就添加默认值）
-        if (Application.Current?.Resources.Contains(resourceKey) != true)
+        // 使用 TryFindResource 查找资源（会在整个资源树包括 MergedDictionaries 中查找）
+        var resource = Application.Current?.TryFindResource(resourceKey);
+
+        // 只有在整个资源树中都找不到时才添加默认值
+        if (resource == null && Application.Current != null)
         {
-            Application.Current!.Resources[resourceKey] = defaultValue;
+            Application.Current.Resources[resourceKey] = defaultValue;
         }
 
-        // 总是建立动态绑定
+        // 建立动态绑定
         element.SetResourceReference(property, resourceKey);
     }
 
@@ -533,13 +536,16 @@ public class MarkdownRenderer
     /// </summary>
     private void SetDynamicResource(System.Windows.Documents.TextElement element, DependencyProperty property, string resourceKey, object defaultValue)
     {
-        // 先确保资源字典中有这个键（如果没有就添加默认值）
-        if (Application.Current?.Resources.Contains(resourceKey) != true)
+        // 使用 TryFindResource 查找资源（会在整个资源树包括 MergedDictionaries 中查找）
+        var resource = Application.Current?.TryFindResource(resourceKey);
+
+        // 只有在整个资源树中都找不到时才添加默认值
+        if (resource == null && Application.Current != null)
         {
-            Application.Current!.Resources[resourceKey] = defaultValue;
+            Application.Current.Resources[resourceKey] = defaultValue;
         }
 
-        // 总是建立动态绑定
+        // 建立动态绑定
         element.SetResourceReference(property, resourceKey);
     }
 
