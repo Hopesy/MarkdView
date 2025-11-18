@@ -13,20 +13,16 @@ namespace Samples;
 /// </summary>
 public partial class MainWindowViewModel : ObservableObject
 {
-    private readonly ThemeService _themeService;
-
     [ObservableProperty]
     private string _content = string.Empty;
 
+    [ObservableProperty]
+    private ThemeMode _theme = ThemeMode.Dark;
+
     public MainWindowViewModel()
     {
-        _themeService = new ThemeService();
-
         // 加载示例文件
         LoadMarkdownContent();
-
-        // 默认应用深色主题
-        //_themeService.ApplyTheme(ThemeMode.Dark);
     }
 
     /// <summary>
@@ -35,7 +31,7 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void SwitchToLightTheme()
     {
-        _themeService.ApplyTheme(ThemeMode.Light);
+        Theme = ThemeMode.Light;
     }
 
     /// <summary>
@@ -44,7 +40,7 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void SwitchToDarkTheme()
     {
-        _themeService.ApplyTheme(ThemeMode.Dark);
+        Theme = ThemeMode.Dark;
     }
 
     /// <summary>

@@ -187,6 +187,10 @@ public partial class MarkdownViewer : UserControl
         // 订阅 ViewModel 事件
         SubscribeToViewModel(_internalViewModel);
 
+        // 应用默认主题
+        var themeService = new ThemeService();
+        themeService.ApplyTheme(Theme);
+
         // 初始渲染
         RenderMarkdown();
     }
@@ -333,8 +337,12 @@ public partial class MarkdownViewer : UserControl
     {
         if (d is MarkdownViewer viewer && !viewer._isUpdatingFromViewModel && viewer._internalViewModel != null)
         {
-            viewer._internalViewModel.Theme = (ThemeMode)e.NewValue;
-            // ThemeChanged 事件会触发重新渲染
+            var newTheme = (ThemeMode)e.NewValue;
+            viewer._internalViewModel.Theme = newTheme;
+
+            // 应用主题到全局资源
+            var themeService = new ThemeService();
+            themeService.ApplyTheme(newTheme);
         }
     }
 

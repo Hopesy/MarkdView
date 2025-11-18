@@ -56,11 +56,11 @@ public class RenderingService
             PagePadding = new Thickness(0)
         };
 
-        // 使用动态资源绑定 FlowDocument 的前景色和背景色
+        // 使用动态资源绑定 FlowDocument 的前景色和背景色（默认深色主题）
         SetDynamicResource(flowDocument, FlowDocument.ForegroundProperty, "Markdown.Foreground",
-            new SolidColorBrush(Color.FromRgb(0x66, 0x66, 0x66)));
+            new SolidColorBrush(Color.FromRgb(0xCC, 0xCC, 0xCC)));
         SetDynamicResource(flowDocument, FlowDocument.BackgroundProperty, "Markdown.Background",
-            new SolidColorBrush(Colors.Transparent));
+            new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E)));
 
         // 遍历所有块级元素
         foreach (var block in document)
@@ -126,20 +126,20 @@ public class RenderingService
                 _ => 16
             });
 
-        // 使用动态资源绑定标题前景色（H3 使用 H2 的颜色）
+        // 使用动态资源绑定标题前景色（H3 使用 H2 的颜色，默认深色主题）
         SetDynamicResource(paragraph, Paragraph.ForegroundProperty,
             $"Markdown.Heading.{styleKey}.Foreground",
-            new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A)));
+            new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0)));
 
         paragraph.FontWeight = level <= 3 ? FontWeights.Bold : FontWeights.SemiBold;
 
         // H1, H2 和 H3 添加底部边框
         if (level <= 3)
         {
-            // 使用动态资源绑定边框颜色（H3 使用 H2 的边框颜色）
+            // 使用动态资源绑定边框颜色（H3 使用 H2 的边框颜色，默认深色主题）
             SetDynamicResource(paragraph, Paragraph.BorderBrushProperty,
                 $"Markdown.Heading.{styleKey}.Border",
-                new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0)));
+                new SolidColorBrush(Color.FromRgb(0x56, 0x9C, 0xD6)));
             paragraph.BorderThickness = GetThickness("Markdown.Heading.BorderThickness", new Thickness(0, 0, 0, 1));
             paragraph.Padding = new Thickness(0, 0, 0, 8);
         }
@@ -194,13 +194,13 @@ public class RenderingService
             Margin = new Thickness(0, 16, 0, 16)
         };
 
-        // 使用动态资源绑定引用块的背景和边框颜色
+        // 使用动态资源绑定引用块的背景和边框颜色（默认深色主题）
         SetDynamicResource(section, Section.BackgroundProperty,
             "Markdown.Quote.Background",
-            new SolidColorBrush(Color.FromRgb(0xF0, 0xF0, 0xF0)));
+            new SolidColorBrush(Color.FromRgb(0x2D, 0x2D, 0x2D)));
         SetDynamicResource(section, Section.BorderBrushProperty,
             "Markdown.Quote.Border",
-            new SolidColorBrush(Color.FromRgb(0x5C, 0x9D, 0xFF)));
+            new SolidColorBrush(Color.FromRgb(0x56, 0x9C, 0xD6)));
 
         // 递归转换子块
         foreach (var block in quote)
@@ -364,13 +364,13 @@ public class RenderingService
             FontSize = GetFontSize("Markdown.InlineCodeFontSize", 13)
         };
 
-        // 使用动态资源绑定内联代码的背景和前景色
+        // 使用动态资源绑定内联代码的背景和前景色（默认深色主题）
         SetDynamicResource(span, Span.BackgroundProperty,
             "Markdown.InlineCode.Background",
-            new SolidColorBrush(Color.FromRgb(0xF0, 0xF0, 0xF0)));
+            new SolidColorBrush(Color.FromRgb(0x3E, 0x3E, 0x3E)));
         SetDynamicResource(span, Span.ForegroundProperty,
             "Markdown.InlineCode.Foreground",
-            new SolidColorBrush(Color.FromRgb(0xE5, 0x39, 0x35)));
+            new SolidColorBrush(Color.FromRgb(0xF9, 0x82, 0x66)));
 
         // 使用空格模拟 padding
         span.Inlines.Add(new Run(" " + code.Content + " "));
@@ -394,10 +394,10 @@ public class RenderingService
             TextDecorations = TextDecorations.Underline
         };
 
-        // 使用动态资源绑定链接颜色
+        // 使用动态资源绑定链接颜色（默认深色主题）
         SetDynamicResource(hyperlink, Hyperlink.ForegroundProperty,
             "Markdown.Link.Foreground",
-            new SolidColorBrush(Color.FromRgb(0x58, 0xA6, 0xFF)));
+            new SolidColorBrush(Color.FromRgb(0x56, 0x9C, 0xD6)));
 
         hyperlink.RequestNavigate += (s, e) =>
         {
