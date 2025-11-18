@@ -16,13 +16,11 @@ namespace MarkdView.Renderers;
 /// </summary>
 public class CodeBlockRenderer
 {
-    private readonly ThemeResourceManager _theme;
     private readonly bool _enableSyntaxHighlighting;
     private readonly ThemeMode _themeMode;
 
-    public CodeBlockRenderer(ThemeResourceManager theme, bool enableSyntaxHighlighting, ThemeMode themeMode = ThemeMode.Dark)
+    public CodeBlockRenderer(bool enableSyntaxHighlighting, ThemeMode themeMode = ThemeMode.Dark)
     {
-        _theme = theme;
         _enableSyntaxHighlighting = enableSyntaxHighlighting;
         _themeMode = themeMode;
     }
@@ -44,10 +42,10 @@ public class CodeBlockRenderer
         };
 
         // 使用动态资源绑定，支持主题切换
-        _theme.SetDynamicResource(mainBorder, Border.BackgroundProperty,
+        SetDynamicResource(mainBorder, Border.BackgroundProperty,
             "Markdown.CodeBlock.Background",
             new SolidColorBrush(Color.FromRgb(0x28, 0x2C, 0x34)));
-        _theme.SetDynamicResource(mainBorder, Border.BorderBrushProperty,
+        SetDynamicResource(mainBorder, Border.BorderBrushProperty,
             "Markdown.CodeBlock.Border",
             new SolidColorBrush(Color.FromRgb(0x21, 0x25, 0x2B)));
 
@@ -79,7 +77,7 @@ public class CodeBlockRenderer
         var headerGrid = new Grid();
 
         // 使用动态资源绑定标题栏背景色
-        _theme.SetDynamicResource(headerGrid, Grid.BackgroundProperty,
+        SetDynamicResource(headerGrid, Grid.BackgroundProperty,
             "Markdown.CodeBlock.Header.Background",
             new SolidColorBrush(Color.FromRgb(0x21, 0x25, 0x2B)));
 
@@ -99,7 +97,7 @@ public class CodeBlockRenderer
             };
 
             // 使用动态资源绑定语言标签颜色
-            _theme.SetDynamicResource(langLabel, TextBlock.ForegroundProperty,
+            SetDynamicResource(langLabel, TextBlock.ForegroundProperty,
                 "Markdown.CodeBlock.Language.Foreground",
                 new SolidColorBrush(Color.FromRgb(0xAB, 0xB2, 0xBF)));
 
@@ -175,10 +173,10 @@ public class CodeBlockRenderer
         };
 
         // 使用动态资源绑定按钮颜色
-        _theme.SetDynamicResource(copyButton, Button.BackgroundProperty,
+        SetDynamicResource(copyButton, Button.BackgroundProperty,
             "Markdown.CodeBlock.CopyButton.Background",
             new SolidColorBrush(Color.FromRgb(0x3C, 0x40, 0x48)));
-        _theme.SetDynamicResource(copyButton, Button.ForegroundProperty,
+        SetDynamicResource(copyButton, Button.ForegroundProperty,
             "Markdown.CodeBlock.CopyButton.Foreground",
             new SolidColorBrush(Color.FromRgb(0xAB, 0xB2, 0xBF)));
 
@@ -314,10 +312,10 @@ public class CodeBlockRenderer
         };
 
         // 使用动态资源绑定字体（也可以使用静态获取，字体通常不会频繁改变）
-        _theme.SetDynamicResource(codeTextBlock, TextBlock.FontFamilyProperty,
+        SetDynamicResource(codeTextBlock, TextBlock.FontFamilyProperty,
             "Markdown.CodeFontFamily",
             new FontFamily("Consolas, Monaco, Courier New, monospace"));
-        _theme.SetDynamicResource(codeTextBlock, TextBlock.FontSizeProperty,
+        SetDynamicResource(codeTextBlock, TextBlock.FontSizeProperty,
             "Markdown.CodeFontSize",
             13.5);
 
@@ -329,7 +327,7 @@ public class CodeBlockRenderer
         else
         {
             // 不启用高亮时使用动态资源绑定前景色
-            _theme.SetDynamicResource(codeTextBlock, TextBlock.ForegroundProperty,
+            SetDynamicResource(codeTextBlock, TextBlock.ForegroundProperty,
                 "Markdown.CodeBlock.Foreground",
                 new SolidColorBrush(Color.FromRgb(0xAB, 0xB2, 0xBF)));
             codeTextBlock.Text = code;
@@ -337,5 +335,20 @@ public class CodeBlockRenderer
 
         codeScrollViewer.Content = codeTextBlock;
         return codeScrollViewer;
+    }
+
+    /// <summary>
+    /// 设置动态资源引用
+    /// </summary>
+    private void SetDynamicResource(FrameworkElement element, DependencyProperty property, string resourceKey, object defaultValue)
+    {
+        // 先确保资源字典中有这个键（如果没有就添加默认值）
+        if (Application.Current?.Resources.Contains(resourceKey) != true)
+        {
+            Application.Current!.Resources[resourceKey] = defaultValue;
+        }
+
+        // 总是建立动态绑定
+        element.SetResourceReference(property, resourceKey);
     }
 }

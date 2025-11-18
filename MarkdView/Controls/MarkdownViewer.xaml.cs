@@ -145,7 +145,6 @@ public partial class MarkdownViewer : UserControl
     private bool _hasPendingUpdate;
 
     // 服务
-    private readonly ThemeResourceManager _themeManager;
     private readonly RenderingService _renderingService;
 
     // ViewModel
@@ -164,9 +163,6 @@ public partial class MarkdownViewer : UserControl
         _internalViewModel = new MarkdownViewModel();
         ViewModel = _internalViewModel;
 
-        // 初始化主题资源管理器
-        _themeManager = new ThemeResourceManager(this);
-
         // 配置 Markdig 管道
         _pipeline = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
@@ -176,7 +172,7 @@ public partial class MarkdownViewer : UserControl
             .Build();
 
         // 初始化渲染服务
-        _renderingService = new RenderingService(_pipeline, _themeManager);
+        _renderingService = new RenderingService(_pipeline);
 
         // 配置流式渲染定时器
         _updateTimer = new DispatcherTimer
@@ -407,7 +403,7 @@ public partial class MarkdownViewer : UserControl
     private void RenderMarkdown()
     {
         // 确保所有必需的服务和控件已初始化
-        if (_renderingService == null || _themeManager == null || _internalViewModel == null || MarkdownDocument == null)
+        if (_renderingService == null || _internalViewModel == null || MarkdownDocument == null)
         {
             return;
         }
@@ -416,7 +412,6 @@ public partial class MarkdownViewer : UserControl
         {
             // 创建代码块渲染器
             var codeBlockRenderer = new Renderers.CodeBlockRenderer(
-                _themeManager,
                 _internalViewModel.EnableSyntaxHighlighting,
                 _internalViewModel.Theme);
 

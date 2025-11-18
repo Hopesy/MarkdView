@@ -28,12 +28,10 @@ namespace MarkdView.Services.Renderers;
 public class RenderingService
 {
     private readonly MarkdownPipeline _pipeline;
-    private readonly ThemeResourceManager _themeManager;
 
-    public RenderingService(MarkdownPipeline pipeline, ThemeResourceManager themeManager)
+    public RenderingService(MarkdownPipeline pipeline)
     {
         _pipeline = pipeline;
-        _themeManager = themeManager;
     }
 
     /// <summary>
@@ -59,11 +57,9 @@ public class RenderingService
         };
 
         // 使用动态资源绑定 FlowDocument 的前景色和背景色
-        _themeManager.SetDynamicResource(flowDocument, FlowDocument.ForegroundProperty,
-            "Markdown.Foreground",
+        SetDynamicResource(flowDocument, FlowDocument.ForegroundProperty, "Markdown.Foreground",
             new SolidColorBrush(Color.FromRgb(0x66, 0x66, 0x66)));
-        _themeManager.SetDynamicResource(flowDocument, FlowDocument.BackgroundProperty,
-            "Markdown.Background",
+        SetDynamicResource(flowDocument, FlowDocument.BackgroundProperty, "Markdown.Background",
             new SolidColorBrush(Colors.Transparent));
 
         // 遍历所有块级元素
@@ -131,7 +127,7 @@ public class RenderingService
             });
 
         // 使用动态资源绑定标题前景色（H3 使用 H2 的颜色）
-        _themeManager.SetDynamicResource(paragraph, Paragraph.ForegroundProperty,
+        SetDynamicResource(paragraph, Paragraph.ForegroundProperty,
             $"Markdown.Heading.{styleKey}.Foreground",
             new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A)));
 
@@ -141,7 +137,7 @@ public class RenderingService
         if (level <= 3)
         {
             // 使用动态资源绑定边框颜色（H3 使用 H2 的边框颜色）
-            _themeManager.SetDynamicResource(paragraph, Paragraph.BorderBrushProperty,
+            SetDynamicResource(paragraph, Paragraph.BorderBrushProperty,
                 $"Markdown.Heading.{styleKey}.Border",
                 new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0)));
             paragraph.BorderThickness = GetThickness("Markdown.Heading.BorderThickness", new Thickness(0, 0, 0, 1));
@@ -199,10 +195,10 @@ public class RenderingService
         };
 
         // 使用动态资源绑定引用块的背景和边框颜色
-        _themeManager.SetDynamicResource(section, Section.BackgroundProperty,
+        SetDynamicResource(section, Section.BackgroundProperty,
             "Markdown.Quote.Background",
             new SolidColorBrush(Color.FromRgb(0xF0, 0xF0, 0xF0)));
-        _themeManager.SetDynamicResource(section, Section.BorderBrushProperty,
+        SetDynamicResource(section, Section.BorderBrushProperty,
             "Markdown.Quote.Border",
             new SolidColorBrush(Color.FromRgb(0x5C, 0x9D, 0xFF)));
 
@@ -369,10 +365,10 @@ public class RenderingService
         };
 
         // 使用动态资源绑定内联代码的背景和前景色
-        _themeManager.SetDynamicResource(span, Span.BackgroundProperty,
+        SetDynamicResource(span, Span.BackgroundProperty,
             "Markdown.InlineCode.Background",
             new SolidColorBrush(Color.FromRgb(0xF0, 0xF0, 0xF0)));
-        _themeManager.SetDynamicResource(span, Span.ForegroundProperty,
+        SetDynamicResource(span, Span.ForegroundProperty,
             "Markdown.InlineCode.Foreground",
             new SolidColorBrush(Color.FromRgb(0xE5, 0x39, 0x35)));
 
@@ -399,7 +395,7 @@ public class RenderingService
         };
 
         // 使用动态资源绑定链接颜色
-        _themeManager.SetDynamicResource(hyperlink, Hyperlink.ForegroundProperty,
+        SetDynamicResource(hyperlink, Hyperlink.ForegroundProperty,
             "Markdown.Link.Foreground",
             new SolidColorBrush(Color.FromRgb(0x58, 0xA6, 0xFF)));
 
@@ -517,6 +513,36 @@ public class RenderingService
     #endregion
 
     #region 主题资源辅助方法
+
+    /// <summary>
+    /// 设置动态资源引用（用于 FrameworkContentElement）
+    /// </summary>
+    private void SetDynamicResource(FrameworkContentElement element, DependencyProperty property, string resourceKey, object defaultValue)
+    {
+        // 先确保资源字典中有这个键（如果没有就添加默认值）
+        if (Application.Current?.Resources.Contains(resourceKey) != true)
+        {
+            Application.Current!.Resources[resourceKey] = defaultValue;
+        }
+
+        // 总是建立动态绑定
+        element.SetResourceReference(property, resourceKey);
+    }
+
+    /// <summary>
+    /// 设置动态资源引用（用于 TextElement）
+    /// </summary>
+    private void SetDynamicResource(System.Windows.Documents.TextElement element, DependencyProperty property, string resourceKey, object defaultValue)
+    {
+        // 先确保资源字典中有这个键（如果没有就添加默认值）
+        if (Application.Current?.Resources.Contains(resourceKey) != true)
+        {
+            Application.Current!.Resources[resourceKey] = defaultValue;
+        }
+
+        // 总是建立动态绑定
+        element.SetResourceReference(property, resourceKey);
+    }
 
     private Brush GetBrush(string key, Color defaultColor)
     {

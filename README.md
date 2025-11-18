@@ -143,7 +143,7 @@ MarkdView/
 │   ├── Theme/
 │   │   ├── ThemeResourceKeys.cs    # 主题资源键
 │   │   ├── ThemeService.cs         # 主题服务
-│   │   └── ThemeResourceManager.cs # 主题资源管理
+│   │   └── ThemeMode.cs            # 主题模式枚举
 │   ├── SyntaxHighlight/
 │   │   └── SyntaxHighlighter.cs    # 语法高亮服务
 │   └── Renderers/
@@ -151,9 +151,6 @@ MarkdView/
 │       └── CodeBlockRenderer.cs    # 代码块渲染器
 ├── ViewModels/
 │   └── MarkdownViewModel.cs        # Markdown ViewModel
-├── Themes/
-│   ├── Light.xaml                  # 浅色主题
-│   └── Dark.xaml                   # 深色主题
 └── Samples/
     └── Example.md                  # 功能示例
 ```
