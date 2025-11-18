@@ -527,9 +527,12 @@ public class MarkdownViewer : ContentControl
         if (d is MarkdownViewer viewer && !viewer._isUpdatingFromViewModel && viewer._internalViewModel != null)
         {
             var newTheme = (ThemeMode)e.NewValue;
+            Console.WriteLine($"[MarkdownViewer] OnThemeChanged: Theme property changed to {newTheme}");
+
             viewer._internalViewModel.Theme = newTheme;
 
             // 应用主题到全局资源
+            Console.WriteLine($"[MarkdownViewer] OnThemeChanged: Calling ThemeManager.ApplyTheme({newTheme})");
             ThemeManager.ApplyTheme(newTheme);
         }
     }

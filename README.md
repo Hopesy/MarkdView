@@ -197,7 +197,6 @@ MarkdView/
 ├── Services/
 │   ├── Theme/
 │   │   ├── ThemeManager.cs         # 主题管理器（静态）
-│   │   ├── ThemeService.cs         # 主题服务
 │   │   └── ThemeMode.cs            # 主题模式枚举
 │   └── SyntaxHighlight/
 │       └── SyntaxHighlighter.cs    # 语法高亮服务

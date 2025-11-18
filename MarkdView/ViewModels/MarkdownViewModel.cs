@@ -11,7 +11,6 @@ namespace MarkdView.ViewModels;
 /// </summary>
 public partial class MarkdownViewModel : ObservableObject
 {
-    private readonly ThemeService _themeService;
 
     #region 可观察属性
 
@@ -82,18 +81,8 @@ public partial class MarkdownViewModel : ObservableObject
 
     public MarkdownViewModel()
     {
-        _themeService = new ThemeService();
-
         // 应用默认主题
-        _themeService.ApplyTheme(_theme);
-    }
-
-    public MarkdownViewModel(ThemeService themeService)
-    {
-        _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
-
-        // 应用默认主题
-        _themeService.ApplyTheme(_theme);
+        ThemeManager.ApplyTheme(_theme);
     }
 
     #endregion
@@ -113,7 +102,7 @@ public partial class MarkdownViewModel : ObservableObject
     /// </summary>
     partial void OnThemeChanged(ThemeMode value)
     {
-        _themeService.ApplyTheme(value);
+        ThemeManager.ApplyTheme(value);
         ThemeChanged?.Invoke(this, EventArgs.Empty);
     }
 

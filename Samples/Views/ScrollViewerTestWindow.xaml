@@ -41,9 +41,7 @@
                         <TextBlock Margin="0,0,0,10" FontSize="16" FontWeight="Bold" Text="场景 1: ScrollViewer 包裹单个 MarkdownViewer" />
                         <TextBlock Margin="0,0,0,20" Foreground="#666666" Text="测试在 ScrollViewer 中使用单个 MarkdownViewer 的滚动表现" TextWrapping="Wrap" />
                         <markd:MarkdownViewer Content="{Binding Content}"
-                                              EnableSyntaxHighlighting="True" HorizontalScrollBarVisibility="Disabled"
-                                              Theme="{Binding Theme}"
-                                              VerticalScrollBarVisibility="Disabled" />
+                                              EnableSyntaxHighlighting="True" HorizontalScrollBarVisibility="Disabled" Theme="Light" VerticalScrollBarVisibility="Disabled" />
                     </StackPanel>
                 </Border>
             </ScrollViewer>
