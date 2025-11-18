@@ -6,7 +6,7 @@ using MarkdView;
 using MarkdView.Services.Theme;
 using MarkdView.ViewModels;
 
-namespace Samples;
+namespace Samples.ViewModels;
 
 /// <summary>
 /// MainWindow 的 ViewModel - 演示 MVVM 模式

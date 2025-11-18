@@ -15,7 +15,9 @@
       "Bash(findstr:*)",
       "Bash(ls:*)",
       "Bash(taskkill:*)",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "Bash(dotnet run)",
+      "Bash(Select-String \"OnMarkdownChanged\")"
     ],
     "deny": [],
     "ask": []

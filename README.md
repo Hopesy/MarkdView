@@ -52,6 +52,8 @@ public partial class MainViewModel : ObservableObject
 
 ### 主题切换
 
+MarkdownViewer 支持浅色和深色两种主题，**无需在 App.xaml 中配置**，创建控件时会自动加载主题资源。
+
 ```xaml
 <markd:MarkdownViewer
     Markdown="{Binding Content}"
@@ -75,6 +77,25 @@ public partial class MainViewModel : ObservableObject
 }
 ```
 
+**手动初始化主题**（可选）：
+
+如果需要在应用启动时就加载主题资源（例如在其他控件中使用主题颜色），可以在 `App.xaml.cs` 中手动初始化：
+
+```csharp
+using MarkdView.Services.Theme;
+
+public partial class App : Application
+{
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        // 手动加载主题资源
+        ThemeManager.ApplyTheme(ThemeMode.Dark);
+    }
+}
+```
+
 ### 完整配置
 
 ```xaml
@@ -90,26 +111,56 @@ public partial class MainViewModel : ObservableObject
 
 ## 🎨 主题定制
 
-可以在 `App.xaml` 中自定义主题颜色：
+### 方式 1：运行时自定义（推荐）
+
+在创建 MarkdownViewer 之前修改全局资源：
+
+```csharp
+using MarkdView.Services.Theme;
+
+public partial class App : Application
+{
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        // 先加载主题
+        ThemeManager.ApplyTheme(ThemeMode.Dark);
+
+        // 然后自定义特定颜色
+        Resources["Markdown.Heading.H1.Border"] = new SolidColorBrush(Color.FromRgb(0xFF, 0x69, 0xB4));
+        Resources["Markdown.CodeBlock.Background"] = new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E));
+    }
+}
+```
+
+### 方式 2：在 App.xaml 中覆盖
+
+如果使用手动初始化主题，也可以在 `App.xaml` 中覆盖特定颜色：
 
 ```xaml
 <Application.Resources>
-    <!-- 自定义文本颜色 -->
+    <!-- 覆盖默认主题颜色 -->
     <SolidColorBrush x:Key="Markdown.Foreground" Color="#1E1E1E"/>
-
-    <!-- 自定义标题边框 -->
     <SolidColorBrush x:Key="Markdown.Heading.H1.Border" Color="#5C9DFF"/>
-
-    <!-- 自定义引用块 -->
     <SolidColorBrush x:Key="Markdown.Quote.Background" Color="#F9F9F9"/>
-    <SolidColorBrush x:Key="Markdown.Quote.Border" Color="#5C9DFF"/>
-
-    <!-- 自定义代码块 -->
     <SolidColorBrush x:Key="Markdown.CodeBlock.Background" Color="#282C34"/>
 </Application.Resources>
 ```
 
-更多主题键请参考主题资源字典文件 `Themes/Light.xaml` 和 `Themes/Dark.xaml`。
+### 可用的主题资源键
+
+所有可自定义的主题资源键请参考：
+- 浅色主题：`MarkdView/Themes/Light.xaml`
+- 深色主题：`MarkdView/Themes/Dark.xaml`
+
+主要资源键包括：
+- `Markdown.Foreground` / `Markdown.Background` - 全局前景/背景色
+- `Markdown.Heading.H1.Foreground` / `Markdown.Heading.H1.Border` - 标题样式
+- `Markdown.Quote.Background` / `Markdown.Quote.Border` - 引用块样式
+- `Markdown.CodeBlock.Background` / `Markdown.CodeBlock.Foreground` - 代码块样式
+- `Markdown.InlineCode.Background` / `Markdown.InlineCode.Foreground` - 行内代码样式
+- `Markdown.Link.Foreground` - 链接颜色
 
 ## 📝 支持的 Markdown 特性
 

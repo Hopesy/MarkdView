@@ -76,6 +76,20 @@ public partial class MarkdownViewer : UserControl
             typeof(MarkdownViewer),
             new PropertyMetadata(null, OnViewModelChanged));
 
+    public static readonly DependencyProperty VerticalScrollBarVisibilityProperty =
+        DependencyProperty.Register(
+            nameof(VerticalScrollBarVisibility),
+            typeof(ScrollBarVisibility),
+            typeof(MarkdownViewer),
+            new PropertyMetadata(ScrollBarVisibility.Auto, OnVerticalScrollBarVisibilityChanged));
+
+    public static readonly DependencyProperty HorizontalScrollBarVisibilityProperty =
+        DependencyProperty.Register(
+            nameof(HorizontalScrollBarVisibility),
+            typeof(ScrollBarVisibility),
+            typeof(MarkdownViewer),
+            new PropertyMetadata(ScrollBarVisibility.Auto, OnHorizontalScrollBarVisibilityChanged));
+
     #endregion
 
     #region 公共属性
@@ -131,6 +145,24 @@ public partial class MarkdownViewer : UserControl
         set => SetValue(ViewModelProperty, value);
     }
 
+    /// <summary>
+    /// 垂直滚动条可见性
+    /// </summary>
+    public ScrollBarVisibility VerticalScrollBarVisibility
+    {
+        get => (ScrollBarVisibility)GetValue(VerticalScrollBarVisibilityProperty);
+        set => SetValue(VerticalScrollBarVisibilityProperty, value);
+    }
+
+    /// <summary>
+    /// 水平滚动条可见性
+    /// </summary>
+    public ScrollBarVisibility HorizontalScrollBarVisibility
+    {
+        get => (ScrollBarVisibility)GetValue(HorizontalScrollBarVisibilityProperty);
+        set => SetValue(HorizontalScrollBarVisibilityProperty, value);
+    }
+
     #endregion
 
     #region 私有字段
@@ -151,17 +183,27 @@ public partial class MarkdownViewer : UserControl
     private MarkdownViewModel _internalViewModel;
     private bool _isUpdatingFromViewModel;
 
+    // 缓存父级ScrollViewer，用于滚轮事件处理
+    private ScrollViewer? _cachedParentScrollViewer;
+    private bool _hasSearchedForParent;
+
+    // 用于检测绑定延迟的标志
+    private bool _hasCheckedBindingAfterLoad;
+
     #endregion
 
     #region 构造函数
 
     public MarkdownViewer()
     {
+        Console.WriteLine($"[MarkdownViewer] Constructor START");
+
         InitializeComponent();
 
-        // 初始化内部 ViewModel
+        Console.WriteLine($"[MarkdownViewer] InitializeComponent done, MarkdownDocument={MarkdownDocument != null}");
+
+        // 初始化内部 ViewModel（先不赋值给ViewModel属性，避免触发回调）
         _internalViewModel = new MarkdownViewModel();
-        ViewModel = _internalViewModel;
 
         // 配置 Markdig 管道
         _pipeline = new MarkdownPipelineBuilder()
@@ -174,6 +216,9 @@ public partial class MarkdownViewer : UserControl
         // 初始化渲染服务
         _renderingService = new MarkdownRenderer(_pipeline);
 
+        // 现在可以安全地设置ViewModel了（_renderingService已初始化）
+        ViewModel = _internalViewModel;
+
         // 配置流式渲染定时器
         _updateTimer = new DispatcherTimer
         {
@@ -184,14 +229,29 @@ public partial class MarkdownViewer : UserControl
         // 处理滚轮事件冒泡
         MarkdownDocument.PreviewMouseWheel += OnPreviewMouseWheel;
 
+        // 同步滚动条可见性
+        MarkdownDocument.VerticalScrollBarVisibility = VerticalScrollBarVisibility;
+        MarkdownDocument.HorizontalScrollBarVisibility = HorizontalScrollBarVisibility;
+
         // 订阅 ViewModel 事件
         SubscribeToViewModel(_internalViewModel);
+
+        // 订阅 Loaded 事件，用于延迟初始化
+        this.Loaded += OnLoaded;
+
+        // 订阅 DataContextChanged 事件，用于检测数据绑定何时生效
+        this.DataContextChanged += OnDataContextChanged;
+
+        // 订阅 LayoutUpdated 事件，用于检测绑定完成
+        this.LayoutUpdated += OnLayoutUpdated;
 
         // 应用默认主题
         ThemeManager.ApplyTheme(Theme);
 
-        // 初始渲染
-        RenderMarkdown();
+        Console.WriteLine($"[MarkdownViewer] Constructor END");
+
+        // 不要在构造函数中渲染，等待Markdown属性绑定完成后再渲染
+        // RenderMarkdown();
     }
 
     #endregion
@@ -220,6 +280,8 @@ public partial class MarkdownViewer : UserControl
     {
         if (_isUpdatingFromViewModel) return;
 
+        Console.WriteLine($"[MarkdownViewer] OnViewModelMarkdownChanged: newText length={_internalViewModel.Markdown.Length}");
+
         _isUpdatingFromViewModel = true;
         try
         {
@@ -231,8 +293,11 @@ public partial class MarkdownViewer : UserControl
             _isUpdatingFromViewModel = false;
         }
 
+        // 在列表场景中（滚动条禁用），总是立即渲染，不使用流式渲染
+        var isListScenario = VerticalScrollBarVisibility == ScrollBarVisibility.Disabled;
+
         // 触发重新渲染
-        if (EnableStreaming)
+        if (EnableStreaming && !isListScenario)
         {
             _pendingText = _lastRenderedText;
             _hasPendingUpdate = true;
@@ -281,16 +346,34 @@ public partial class MarkdownViewer : UserControl
 
     private static void OnMarkdownChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
+        var newText = e.NewValue as string ?? string.Empty;
+        Console.WriteLine($"[MarkdownViewer] OnMarkdownChanged CALLED: newText length={newText.Length}, isViewer={d is MarkdownViewer}");
+
         if (d is MarkdownViewer viewer && !viewer._isUpdatingFromViewModel && viewer._internalViewModel != null)
         {
-            var newText = e.NewValue as string ?? string.Empty;
+            // 调试输出：追踪Markdown属性变化
+            Console.WriteLine($"[MarkdownViewer] OnMarkdownChanged PASSED: newText length={newText.Length}, MarkdownDocument={viewer.MarkdownDocument != null}");
 
             // 同步到 ViewModel
             viewer._internalViewModel.Markdown = newText;
 
-            if (viewer.EnableStreaming)
+            // 在列表场景中（滚动条禁用），总是立即渲染，不使用流式渲染
+            // 使用依赖属性而不是MarkdownDocument的值，因为属性设置有顺序
+            var isListScenario = viewer.VerticalScrollBarVisibility == ScrollBarVisibility.Disabled;
+
+            // 保存待渲染的文本
+            viewer._lastRenderedText = newText;
+
+            // 如果MarkdownDocument还没初始化，等待Loaded事件
+            if (viewer.MarkdownDocument == null)
             {
-                // 流式渲染
+                Console.WriteLine($"[MarkdownViewer] OnMarkdownChanged: MarkdownDocument is NULL, waiting for Loaded");
+                return;
+            }
+
+            if (viewer.EnableStreaming && !isListScenario)
+            {
+                // 流式渲染（仅在非列表场景）
                 viewer._pendingText = newText;
                 viewer._hasPendingUpdate = true;
                 viewer._updateTimer.Stop();
@@ -299,9 +382,12 @@ public partial class MarkdownViewer : UserControl
             else
             {
                 // 立即渲染
-                viewer._lastRenderedText = newText;
                 viewer.RenderMarkdown();
             }
+        }
+        else if (d is MarkdownViewer viewer2)
+        {
+            Console.WriteLine($"[MarkdownViewer] OnMarkdownChanged BLOCKED: isUpdatingFromViewModel={viewer2._isUpdatingFromViewModel}, hasViewModel={viewer2._internalViewModel != null}");
         }
     }
 
@@ -384,6 +470,41 @@ public partial class MarkdownViewer : UserControl
         }
     }
 
+    private static void OnVerticalScrollBarVisibilityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is MarkdownViewer viewer && viewer.MarkdownDocument != null)
+        {
+            var visibility = (ScrollBarVisibility)e.NewValue;
+            viewer.MarkdownDocument.VerticalScrollBarVisibility = visibility;
+
+            // 禁用滚动条时，需要调整布局行为
+            if (visibility == ScrollBarVisibility.Disabled)
+            {
+                // 让控件自动适应内容大小
+                viewer.MarkdownDocument.VerticalAlignment = VerticalAlignment.Stretch;
+                viewer.MarkdownDocument.Height = double.NaN; // Auto
+
+                // 更新FlowDocument的页面设置以适应内容
+                if (viewer.MarkdownDocument.Document != null)
+                {
+                    viewer.ConfigureFlowDocument(viewer.MarkdownDocument.Document);
+                }
+            }
+            else
+            {
+                viewer.MarkdownDocument.VerticalAlignment = VerticalAlignment.Stretch;
+            }
+        }
+    }
+
+    private static void OnHorizontalScrollBarVisibilityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is MarkdownViewer viewer && viewer.MarkdownDocument != null)
+        {
+            viewer.MarkdownDocument.HorizontalScrollBarVisibility = (ScrollBarVisibility)e.NewValue;
+        }
+    }
+
     #endregion
 
     #region Markdown 渲染
@@ -411,8 +532,11 @@ public partial class MarkdownViewer : UserControl
         // 确保所有必需的服务和控件已初始化
         if (_renderingService == null || _internalViewModel == null || MarkdownDocument == null)
         {
+            Console.WriteLine($"[MarkdownViewer] RenderMarkdown SKIPPED: renderingService={_renderingService != null}, viewModel={_internalViewModel != null}, document={MarkdownDocument != null}");
             return;
         }
+
+        Console.WriteLine($"[MarkdownViewer] RenderMarkdown: text length={_lastRenderedText.Length}, scrollBarVisibility={MarkdownDocument.VerticalScrollBarVisibility}");
 
         try
         {
@@ -429,10 +553,18 @@ public partial class MarkdownViewer : UserControl
                 _internalViewModel.EnableSyntaxHighlighting,
                 codeBlockRenderer);
 
+            Console.WriteLine($"[MarkdownViewer] FlowDocument created with {flowDocument.Blocks.Count} blocks");
+
+            // 先设置Document
             MarkdownDocument.Document = flowDocument;
+
+            // 然后立即配置FlowDocument的页面属性（必须在设置Document之后）
+            ConfigureFlowDocument(flowDocument);
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[MarkdownViewer] RenderMarkdown ERROR: {ex.Message}");
+
             // 渲染错误时显示错误信息
             var errorDocument = new FlowDocument();
             var errorParagraph = new Paragraph(new Run($"Markdown 渲染错误: {ex.Message}"))
@@ -440,7 +572,33 @@ public partial class MarkdownViewer : UserControl
                 Foreground = Brushes.Red
             };
             errorDocument.Blocks.Add(errorParagraph);
+
+            // 先设置Document
             MarkdownDocument.Document = errorDocument;
+
+            // 然后配置错误文档
+            ConfigureFlowDocument(errorDocument);
+        }
+    }
+
+    /// <summary>
+    /// 配置 FlowDocument 的页面属性，以支持列表场景
+    /// </summary>
+    private void ConfigureFlowDocument(FlowDocument document)
+    {
+        if (document == null) return;
+
+        // 如果禁用了垂直滚动条（列表场景），设置页面为自动高度
+        if (VerticalScrollBarVisibility == ScrollBarVisibility.Disabled)
+        {
+            document.PageHeight = double.NaN; // Auto
+            document.PageWidth = double.NaN; // Auto
+            document.PagePadding = new Thickness(0);
+
+            // 强制FlowDocumentScrollViewer更新布局
+            MarkdownDocument.InvalidateMeasure();
+            MarkdownDocument.InvalidateArrange();
+            MarkdownDocument.UpdateLayout();
         }
     }
 
@@ -476,23 +634,101 @@ public partial class MarkdownViewer : UserControl
     #region 事件处理
 
     /// <summary>
+    /// DataContext变化事件 - 数据绑定生效时触发
+    /// </summary>
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        Console.WriteLine($"[MarkdownViewer] OnDataContextChanged: DataContext={DataContext != null}");
+
+        // 延迟一点等待绑定完成
+        Dispatcher.InvokeAsync(() =>
+        {
+            Console.WriteLine($"[MarkdownViewer] OnDataContextChanged (delayed): Markdown length={Markdown?.Length ?? 0}");
+
+            // 如果Markdown有值但还没渲染，强制渲染
+            if (!string.IsNullOrEmpty(Markdown) && MarkdownDocument?.Document == null)
+            {
+                Console.WriteLine($"[MarkdownViewer] OnDataContextChanged: Forcing render");
+                _lastRenderedText = Markdown;
+                RenderMarkdown();
+            }
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    /// <summary>
+    /// 布局更新事件 - 检测绑定延迟完成
+    /// </summary>
+    private void OnLayoutUpdated(object? sender, EventArgs e)
+    {
+        // 只检查一次，避免无限循环
+        if (_hasCheckedBindingAfterLoad) return;
+
+        // 如果有Markdown内容但还没渲染，强制渲染
+        if (!string.IsNullOrEmpty(Markdown) && MarkdownDocument?.Document == null)
+        {
+            Console.WriteLine($"[MarkdownViewer] OnLayoutUpdated: Detected Markdown length={Markdown.Length}, forcing render");
+            _hasCheckedBindingAfterLoad = true;
+            _lastRenderedText = Markdown;
+            RenderMarkdown();
+        }
+    }
+
+    /// <summary>
+    /// 控件加载完成事件 - 初始化父级引用和确保渲染完成
+    /// </summary>
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        Console.WriteLine($"[MarkdownViewer] OnLoaded: Markdown length={Markdown?.Length ?? 0}, _lastRenderedText length={_lastRenderedText.Length}, Document={MarkdownDocument?.Document != null}");
+
+        // 查找并缓存父级 ScrollViewer
+        if (!_hasSearchedForParent)
+        {
+            _cachedParentScrollViewer = FindParentScrollViewer(this);
+            _hasSearchedForParent = true;
+            Console.WriteLine($"[MarkdownViewer] OnLoaded: Parent ScrollViewer found={_cachedParentScrollViewer != null}");
+        }
+
+        // 如果有待渲染的文本但还没有文档，立即渲染
+        if (!string.IsNullOrEmpty(_lastRenderedText) && MarkdownDocument?.Document == null)
+        {
+            Console.WriteLine($"[MarkdownViewer] OnLoaded: Forcing immediate render for text length={_lastRenderedText.Length}");
+            RenderMarkdown();
+        }
+        // 确保在列表场景下内容已正确渲染
+        else if (VerticalScrollBarVisibility == ScrollBarVisibility.Disabled)
+        {
+            // 如果有文档，强制重新配置
+            if (MarkdownDocument?.Document != null)
+            {
+                ConfigureFlowDocument(MarkdownDocument.Document);
+            }
+        }
+    }
+
+    /// <summary>
     /// 处理鼠标滚轮事件 - 将事件冒泡到父级容器
     /// </summary>
     private void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (MarkdownDocument.VerticalScrollBarVisibility == ScrollBarVisibility.Disabled)
+        // 如果禁用了垂直滚动条，需要手动将滚轮事件转发给父级ScrollViewer
+        if (VerticalScrollBarVisibility == ScrollBarVisibility.Disabled)
         {
-            if (e.Handled)
+            // 如果还没缓存，尝试查找父级ScrollViewer
+            if (!_hasSearchedForParent)
             {
-                return;
+                _cachedParentScrollViewer = FindParentScrollViewer(this);
+                _hasSearchedForParent = true;
             }
 
-            var scrollViewer = FindParentScrollViewer(this);
-            if (scrollViewer != null)
+            // 如果找到了父级ScrollViewer，手动触发滚动
+            if (_cachedParentScrollViewer != null)
             {
-                var offset = scrollViewer.VerticalOffset - (e.Delta / 3.0);
-                scrollViewer.ScrollToVerticalOffset(offset);
+                // 标记事件为已处理，防止FlowDocumentScrollViewer处理它
                 e.Handled = true;
+
+                // 计算滚动偏移量
+                var offset = _cachedParentScrollViewer.VerticalOffset - e.Delta;
+                _cachedParentScrollViewer.ScrollToVerticalOffset(offset);
             }
         }
     }

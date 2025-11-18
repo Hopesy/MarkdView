@@ -1,0 +1,115 @@
+<Window x:Class="Samples.Views.MarkdownListTestWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:local="clr-namespace:Samples.Views"
+        xmlns:markd="clr-namespace:MarkdView.Controls;assembly=MarkdView"
+        xmlns:helpers="clr-namespace:MarkdView.Helpers;assembly=MarkdView"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        Title="MarkdView - 列表渲染测试"
+        Width="1000"
+        Height="700"
+        mc:Ignorable="d">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <!-- 工具栏 -->
+        <Border Grid.Row="0" Padding="10" Background="#F0F0F0" BorderBrush="#CCCCCC"
+                BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock Margin="0,0,10,0" VerticalAlignment="Center" FontWeight="Bold" Text="列表操作：" />
+                    <Button Margin="5" Padding="10,5" Click="AddItem_Click" Content="➕ 添加消息" />
+                    <Button Margin="5" Padding="10,5" Click="ClearItems_Click" Content="🗑️ 清空列表" />
+                    <Button Margin="5" Padding="10,5" Click="LoadManyItems_Click" Content="📦 加载 20 条" />
+                    <TextBlock Margin="10,0,0,0" VerticalAlignment="Center"
+                               Text="{Binding Items.Count, StringFormat='总计: {0} 条'}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock Margin="10,0" VerticalAlignment="Center" FontWeight="Bold" Text="主题：" />
+                    <Button Margin="5" Padding="10,5"
+                            Command="{Binding SwitchToLightThemeCommand}"
+                            Content="浅色" />
+                    <Button Margin="5" Padding="10,5"
+                            Command="{Binding SwitchToDarkThemeCommand}"
+                            Content="深色" />
+                </StackPanel>
+            </Grid>
+        </Border>
+        <!-- 消息列表 - ScrollViewer 包裹 ItemsControl -->
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <ItemsControl Margin="20" ItemsSource="{Binding Items}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,0,0,15" Padding="20" Background="White" BorderBrush="#E0E0E0"
+                                BorderThickness="1" CornerRadius="8">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <!-- 消息头部 -->
+                                <Grid Grid.Row="0" Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                        <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                 Fill="#5C9DFF" />
+                                        <TextBlock FontSize="13" FontWeight="Bold" Foreground="#333333"
+                                                   Text="{Binding Title}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" FontSize="11" Foreground="#999999"
+                                               Text="{Binding Timestamp, StringFormat='HH:mm:ss'}" />
+                                </Grid>
+                                <!-- 分隔线 -->
+                                <Border Grid.Row="1" Height="1" Margin="0,0,0,10" Background="#F0F0F0" />
+                                <!-- 测试：显示数据绑定是否工作 -->
+                                <StackPanel Grid.Row="2">
+                                    <TextBlock MaxHeight="100" FontWeight="Bold" Foreground="Red"
+                                               Text="{Binding Content}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,5,0,0" Foreground="Blue" Text="--- 上面是Content内容 ---" />
+
+                                    <!-- 测试1：固定值 - 使用附加属性 -->
+                                    <TextBlock Text="测试1：固定Markdown值（附加属性）" FontWeight="Bold" Margin="0,10,0,5" />
+                                    <markd:MarkdownViewer EnableSyntaxHighlighting="True"
+                                                          VerticalScrollBarVisibility="Disabled"
+                                                          HorizontalScrollBarVisibility="Disabled"
+                                                          helpers:MarkdownHelper.Markdown="# 固定标题&#x0a;&#x0a;这是**固定**的Markdown内容。" />
+
+                                    <!-- 测试2：绑定值 - 使用附加属性 -->
+                                    <TextBlock Text="测试2：绑定Content值（附加属性）" FontWeight="Bold" Margin="0,10,0,5" />
+                                    <markd:MarkdownViewer EnableSyntaxHighlighting="True"
+                                                          VerticalScrollBarVisibility="Disabled"
+                                                          HorizontalScrollBarVisibility="Disabled"
+                                                          helpers:MarkdownHelper.Markdown="{Binding Content}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+        <!-- 空状态提示 -->
+        <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <TextBlock FontSize="48" Foreground="#CCCCCC" Text="📝" TextAlignment="Center" />
+            <TextBlock Margin="0,10,0,0" FontSize="16" Foreground="#999999" Text="列表为空"
+                       TextAlignment="Center" />
+            <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="#CCCCCC" Text="点击上方按钮添加消息"
+                       TextAlignment="Center" />
+        </StackPanel>
+    </Grid>
+</Window>

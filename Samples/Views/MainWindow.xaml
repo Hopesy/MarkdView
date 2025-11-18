@@ -1,8 +1,8 @@
-<Window x:Class="Samples.MainWindow"
+<Window x:Class="Samples.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:local="clr-namespace:Samples"
+        xmlns:local="clr-namespace:Samples.Views"
         xmlns:markd="clr-namespace:MarkdView.Controls;assembly=MarkdView"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         Title="MarkdView 示例 - MVVM 模式"
@@ -23,6 +23,13 @@
             <Button Margin="5" Padding="10,5"
                     Command="{Binding SwitchToDarkThemeCommand}"
                     Content="深色主题" />
+            <Separator Margin="10,0" />
+            <Button Margin="5" Padding="10,5"
+                    Click="OpenScrollViewerTest_Click"
+                    Content="ScrollViewer 测试" />
+            <Button Margin="5" Padding="10,5"
+                    Click="OpenMarkdownListTest_Click"
+                    Content="📝 列表渲染测试" />
         </StackPanel>
         <!-- MarkdView 控件 - 主题通过属性绑定控制 -->
         <markd:MarkdownViewer x:Name="MarkdownViewer" Grid.Row="1" Margin="10"
