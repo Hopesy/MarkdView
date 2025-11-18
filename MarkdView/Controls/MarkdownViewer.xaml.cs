@@ -7,7 +7,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using Markdig;
 using MarkdView.Services.Theme;
-using MarkdView.Services.Renderers;
+using MarkdView.Renderers;
 using MarkdView.ViewModels;
 
 namespace MarkdView.Controls;
@@ -145,7 +145,7 @@ public partial class MarkdownViewer : UserControl
     private bool _hasPendingUpdate;
 
     // 服务
-    private readonly RenderingService _renderingService;
+    private readonly MarkdownRenderer _renderingService;
 
     // ViewModel
     private MarkdownViewModel _internalViewModel;
@@ -172,7 +172,7 @@ public partial class MarkdownViewer : UserControl
             .Build();
 
         // 初始化渲染服务
-        _renderingService = new RenderingService(_pipeline);
+        _renderingService = new MarkdownRenderer(_pipeline);
 
         // 配置流式渲染定时器
         _updateTimer = new DispatcherTimer
@@ -188,8 +188,7 @@ public partial class MarkdownViewer : UserControl
         SubscribeToViewModel(_internalViewModel);
 
         // 应用默认主题
-        var themeService = new ThemeService();
-        themeService.ApplyTheme(Theme);
+        ThemeManager.ApplyTheme(Theme);
 
         // 初始渲染
         RenderMarkdown();
@@ -341,8 +340,7 @@ public partial class MarkdownViewer : UserControl
             viewer._internalViewModel.Theme = newTheme;
 
             // 应用主题到全局资源
-            var themeService = new ThemeService();
-            themeService.ApplyTheme(newTheme);
+            ThemeManager.ApplyTheme(newTheme);
         }
     }
 

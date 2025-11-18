@@ -4,7 +4,7 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace MarkdView.Extensions.Controls;
+namespace MarkdView.Controls;
 
 /// <summary>
 /// 代码块控件，支持语法高亮和复制功能

@@ -13,23 +13,22 @@ using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using MarkdView.Services.Theme;
 using MarkdView.Services.SyntaxHighlight;
-using MarkdView.Renderers;
 using Emoji.Wpf;
 using WpfBlock = System.Windows.Documents.Block;
 using WpfInline = System.Windows.Documents.Inline;
 using MarkdigBlock = Markdig.Syntax.Block;
 using MarkdigInline = Markdig.Syntax.Inlines.Inline;
 
-namespace MarkdView.Services.Renderers;
+namespace MarkdView.Renderers;
 
 /// <summary>
-/// Markdown 渲染服务 - 负责将 Markdown 文本转换为 WPF FlowDocument
+/// Markdown 渲染器 - 负责将 Markdown 文本转换为 WPF FlowDocument
 /// </summary>
-public class RenderingService
+public class MarkdownRenderer
 {
     private readonly MarkdownPipeline _pipeline;
 
-    public RenderingService(MarkdownPipeline pipeline)
+    public MarkdownRenderer(MarkdownPipeline pipeline)
     {
         _pipeline = pipeline;
     }

@@ -33,6 +33,11 @@
     <PackageReference Include="Emoji.Wpf" Version="0.3.4" />
     <PackageReference Include="Markdig" Version="0.43.0" />
   </ItemGroup>
+  <!-- 主题资源字典 -->
+  <ItemGroup>
+    <Resource Include="Themes\Dark.xaml" />
+    <Resource Include="Themes\Light.xaml" />
+  </ItemGroup>
   <ItemGroup>
     <None Update="icon.png">
       <Pack>True</Pack>

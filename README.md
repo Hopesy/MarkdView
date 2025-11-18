@@ -109,7 +109,7 @@ public partial class MainViewModel : ObservableObject
 </Application.Resources>
 ```
 
-更多主题键请参考 `ThemeResourceKeys.cs`。
+更多主题键请参考主题资源字典文件 `Themes/Light.xaml` 和 `Themes/Dark.xaml`。
 
 ## 📝 支持的 Markdown 特性
 
@@ -138,21 +138,23 @@ C#, JavaScript, TypeScript, Python, Java, C/C++, Go, Rust, SQL, Bash, HTML, CSS,
 ```
 MarkdView/
 ├── Controls/
-│   └── MarkdownViewer.xaml(.cs)    # 主控件
+│   ├── MarkdownViewer.xaml(.cs)    # 主 Markdown 渲染控件
+│   └── CodeBlockControl.xaml(.cs)  # 代码块控件
+├── Renderers/
+│   ├── MarkdownRenderer.cs         # Markdown 渲染器
+│   └── CodeBlockRenderer.cs        # 代码块渲染器
 ├── Services/
 │   ├── Theme/
-│   │   ├── ThemeResourceKeys.cs    # 主题资源键
+│   │   ├── ThemeManager.cs         # 主题管理器（静态）
 │   │   ├── ThemeService.cs         # 主题服务
 │   │   └── ThemeMode.cs            # 主题模式枚举
-│   ├── SyntaxHighlight/
-│   │   └── SyntaxHighlighter.cs    # 语法高亮服务
-│   └── Renderers/
-│       ├── RenderingService.cs     # Markdown 渲染服务
-│       └── CodeBlockRenderer.cs    # 代码块渲染器
-├── ViewModels/
-│   └── MarkdownViewModel.cs        # Markdown ViewModel
-└── Samples/
-    └── Example.md                  # 功能示例
+│   └── SyntaxHighlight/
+│       └── SyntaxHighlighter.cs    # 语法高亮服务
+├── Themes/
+│   ├── Light.xaml                  # 浅色主题资源字典
+│   └── Dark.xaml                   # 深色主题资源字典
+└── ViewModels/
+    └── MarkdownViewModel.cs        # Markdown ViewModel
 ```
 
 ## 📊 性能特点

@@ -3,9 +3,8 @@ using System.Windows.Media;
 
 namespace MarkdView.Services.Theme;
 
-/// <summary>
 /// Markdown 主题服务 - 负责管理主题资源
-/// </summary>
+// 暂时没有使用
 public class ThemeService
 {
     /// <summary>

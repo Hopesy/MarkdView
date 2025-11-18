@@ -14,7 +14,8 @@
       "Bash(dir:*)",
       "Bash(findstr:*)",
       "Bash(ls:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(dotnet build:*)"
     ],
     "deny": [],
     "ask": []
