@@ -1,4 +1,4 @@
-namespace MarkdView;
+namespace MarkdView.Services.Theme;
 
 /// <summary>
 /// Markdown 渲染主题

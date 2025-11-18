@@ -12,4 +12,10 @@
     <ProjectReference Include="..\MarkdView\MarkdView.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Example.md">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

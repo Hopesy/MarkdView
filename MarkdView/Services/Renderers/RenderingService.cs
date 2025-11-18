@@ -115,6 +115,9 @@ public class RenderingService
         var level = heading.Level;
         var levelKey = $"H{level}";
 
+        // H3 使用 H2 的样式
+        var styleKey = level == 3 ? "H2" : levelKey;
+
         paragraph.FontSize = GetFontSize($"Markdown.Heading.{levelKey}.FontSize",
             level switch
             {
@@ -127,19 +130,19 @@ public class RenderingService
                 _ => 16
             });
 
-        // 使用动态资源绑定标题前景色
+        // 使用动态资源绑定标题前景色（H3 使用 H2 的颜色）
         _themeManager.SetDynamicResource(paragraph, Paragraph.ForegroundProperty,
-            $"Markdown.Heading.{levelKey}.Foreground",
+            $"Markdown.Heading.{styleKey}.Foreground",
             new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A)));
 
-        paragraph.FontWeight = level <= 2 ? FontWeights.Bold : FontWeights.SemiBold;
+        paragraph.FontWeight = level <= 3 ? FontWeights.Bold : FontWeights.SemiBold;
 
-        // H1 和 H2 添加底部边框
-        if (level <= 2)
+        // H1, H2 和 H3 添加底部边框
+        if (level <= 3)
         {
-            // 使���动态资源绑定边框颜色
+            // 使用动态资源绑定边框颜色（H3 使用 H2 的边框颜色）
             _themeManager.SetDynamicResource(paragraph, Paragraph.BorderBrushProperty,
-                $"Markdown.Heading.{levelKey}.Border",
+                $"Markdown.Heading.{styleKey}.Border",
                 new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0)));
             paragraph.BorderThickness = GetThickness("Markdown.Heading.BorderThickness", new Thickness(0, 0, 0, 1));
             paragraph.Padding = new Thickness(0, 0, 0, 8);

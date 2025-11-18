@@ -24,8 +24,10 @@
                     Command="{Binding SwitchToDarkThemeCommand}"
                     Content="深色主题" />
         </StackPanel>
-        <!-- MarkdView 控件 - 绑定到 ViewModel -->
+        <!-- MarkdView 控件 - 直接绑定属性 -->
         <markd:MarkdownViewer x:Name="MarkdownViewer" Grid.Row="1" Margin="10"
-                              ViewModel="{Binding MarkdownViewModel}" />
+                              Markdown="{Binding Content}"
+                              Theme="{Binding Theme}"
+                              EnableSyntaxHighlighting="True" />
     </Grid>
 </Window>

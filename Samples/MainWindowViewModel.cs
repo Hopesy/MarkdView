@@ -3,6 +3,7 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MarkdView;
+using MarkdView.Services.Theme;
 using MarkdView.ViewModels;
 
 namespace Samples;
@@ -12,21 +13,17 @@ namespace Samples;
 /// </summary>
 public partial class MainWindowViewModel : ObservableObject
 {
-    private readonly MarkdownViewModel _markdownViewModel;
+    [ObservableProperty]
+    private string _content = string.Empty;
+
+    [ObservableProperty]
+    private ThemeMode _theme = ThemeMode.Dark;
 
     public MainWindowViewModel()
     {
-        // 创建 Markdown ViewModel
-        _markdownViewModel = new MarkdownViewModel();
-
         // 加载示例文件
         LoadMarkdownContent();
     }
-
-    /// <summary>
-    /// Markdown ViewModel - 暴露给视图绑定
-    /// </summary>
-    public MarkdownViewModel MarkdownViewModel => _markdownViewModel;
 
     /// <summary>
     /// 切换到浅色主题
@@ -34,7 +31,7 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void SwitchToLightTheme()
     {
-        _markdownViewModel.Theme = ThemeMode.Light;
+        Theme = ThemeMode.Light;
     }
 
     /// <summary>
@@ -43,9 +40,8 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void SwitchToDarkTheme()
     {
-        _markdownViewModel.Theme = ThemeMode.Dark;
+        Theme = ThemeMode.Dark;
     }
-
 
     /// <summary>
     /// 加载 Markdown 内容
@@ -57,16 +53,16 @@ public partial class MainWindowViewModel : ObservableObject
             string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Example.md");
             if (File.Exists(filePath))
             {
-                _markdownViewModel.Markdown = File.ReadAllText(filePath);
+                Content = File.ReadAllText(filePath);
             }
             else
             {
-                _markdownViewModel.Markdown = "# 错误\n\n无法找到 Example.md 文件，请确保文件存在于应用程序目录中。";
+                Content = "# 错误\n\n无法找到 Example.md 文件，请确保文件存在于应用程序目录中。";
             }
         }
         catch (Exception ex)
         {
-            _markdownViewModel.Markdown = $"# 错误\n\n加载 Example.md 文件时发生错误：\n\n```\n{ex.Message}\n```";
+            Content = $"# 错误\n\n加载 Example.md 文件时发生错误：\n\n```\n{ex.Message}\n```";
         }
     }
 }

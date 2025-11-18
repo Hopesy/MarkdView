@@ -2,20 +2,20 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/download)
-[![Version](https://img.shields.io/badge/Version-1.0.0-green.svg)](https://github.com/MinoChat/MarkdView)
+[![Version](https://img.shields.io/badge/Version-1.0.1-green.svg)](https://github.com/MinoChat/MarkdView)
 
-> 现代化 WPF Markdown 渲染库，专为 AI 对话场景设计
+> 现代化 WPF Markdown 渲染控件，支持流式渲染和语法高亮
 
 ## ✨ 特性
 
-- 🚀 **流式渲染** - 完美支持 AI 流式输出，50ms 防抖优化
-- 🎨 **语法高亮** - 内置 8+ 语言高亮，VS Code Dark+ 配色
-- 😊 **Emoji 彩色渲染** - 基于 Emoji.Wpf 的完整 Emoji 支持
-- 💻 **Mac 风格代码块** - 装饰性圆点和一键复制功能
-- 🌓 **主题系统** - 浅色/深色/高对比度三套主题,支持自定义
-- 📦 **开箱即用** - 无需配置，默认优美样式
-- ⚡ **高性能** - 缓存机制 + 差分更新
-- 🔧 **易扩展** - 基于 Markdig，支持所有 Markdig 扩展
+- 🚀 **流式渲染** - 支持 AI 流式输出，50ms 防抖优化
+- 🎨 **语法高亮** - 内置多语言高亮支持
+- 😊 **Emoji 支持** - 基于 Emoji.Wpf 的彩色 Emoji 渲染
+- 💻 **Mac 风格代码块** - 带装饰性圆点的优雅代码展示
+- 🌓 **主题切换** - 浅色/深色主题，支持自定义
+- 📦 **MVVM 架构** - 完整支持数据绑定
+- ⚡ **高性能** - 优化的渲染性能
+- 🔧 **易扩展** - 基于 Markdig，支持丰富的 Markdown 特性
 
 ## 📦 安装
 
@@ -38,154 +38,139 @@ dotnet add package MarkdView
 
 ```xaml
 <Window xmlns:markd="clr-namespace:MarkdView.Controls;assembly=MarkdView">
-    <markd:MarkdownViewer Markdown="{Binding MarkdownText}" />
+    <markd:MarkdownViewer Markdown="{Binding Content}" />
 </Window>
 ```
 
-### 流式渲染（AI 场景）
-
 ```csharp
-// ViewModel
-public partial class ChatViewModel : ObservableObject
+public partial class MainViewModel : ObservableObject
 {
     [ObservableProperty]
-    private string _aiResponse = "";
-
-    public async Task StreamResponseAsync()
-    {
-        await foreach (var chunk in aiClient.StreamAsync())
-        {
-            AiResponse += chunk; // 自动触发流式渲染
-        }
-    }
+    private string _content = "# Hello MarkdView\n\nThis is **bold** text.";
 }
 ```
 
-```xaml
-<markd:MarkdownViewer
-    Markdown="{Binding AiResponse}"
-    EnableStreaming="True"
-    StreamingThrottle="50" />
-```
-
-### 高级配置
+### 主题切换
 
 ```xaml
 <markd:MarkdownViewer
     Markdown="{Binding Content}"
+    Theme="{Binding Theme}" />
+```
+
+```csharp
+public partial class MainViewModel : ObservableObject
+{
+    [ObservableProperty]
+    private string _content = "";
+
+    [ObservableProperty]
+    private ThemeMode _theme = ThemeMode.Dark;
+
+    [RelayCommand]
+    private void SwitchToLight() => Theme = ThemeMode.Light;
+
+    [RelayCommand]
+    private void SwitchToDark() => Theme = ThemeMode.Dark;
+}
+```
+
+### 完整配置
+
+```xaml
+<markd:MarkdownViewer
+    Markdown="{Binding Content}"
+    Theme="{Binding Theme}"
     EnableStreaming="True"
     StreamingThrottle="50"
     EnableSyntaxHighlighting="True"
     FontSize="14"
-    FontFamily="Microsoft YaHei UI, Segoe UI" />
+    FontFamily="Microsoft YaHei UI" />
 ```
 
 ## 🎨 主题定制
 
-在 `App.xaml` 或资源字典中定义主题颜色：
+可以在 `App.xaml` 中自定义主题颜色：
 
 ```xaml
-<ResourceDictionary>
-    <!-- 文本颜色 -->
+<Application.Resources>
+    <!-- 自定义文本颜色 -->
     <SolidColorBrush x:Key="Markdown.Foreground" Color="#1E1E1E"/>
-    <SolidColorBrush x:Key="Markdown.Background" Color="Transparent"/>
 
-    <!-- 标题样式 -->
-    <SolidColorBrush x:Key="Markdown.Heading.Border" Color="#5C9DFF"/>
+    <!-- 自定义标题边框 -->
+    <SolidColorBrush x:Key="Markdown.Heading.H1.Border" Color="#5C9DFF"/>
 
-    <!-- 引用块 -->
+    <!-- 自定义引用块 -->
     <SolidColorBrush x:Key="Markdown.Quote.Background" Color="#F9F9F9"/>
     <SolidColorBrush x:Key="Markdown.Quote.Border" Color="#5C9DFF"/>
 
-    <!-- 表格 -->
-    <SolidColorBrush x:Key="Markdown.Table.Border" Color="#E0E0E0"/>
-    <SolidColorBrush x:Key="Markdown.Table.HeaderBackground" Color="#F5F5F5"/>
-</ResourceDictionary>
+    <!-- 自定义代码块 -->
+    <SolidColorBrush x:Key="Markdown.CodeBlock.Background" Color="#282C34"/>
+</Application.Resources>
 ```
+
+更多主题键请参考 `ThemeResourceKeys.cs`。
 
 ## 📝 支持的 Markdown 特性
 
-- ✅ 标题 (H1-H6, 带下划线)
-- ✅ 段落 & 换行
-- ✅ **粗体** & *斜体*
-- ✅ `行内代码`
-- ✅ 代码块（Mac 风格 + 语法高亮 + 复制按钮）
-- ✅ 引用块（左侧彩色边框）
+### 基础语法
+- ✅ 标题 (H1-H6)
+- ✅ **粗体** / *斜体* / ~~删除线~~
+- ✅ 段落和换行
+- ✅ 引用块
 - ✅ 有序/无序列表
-- ✅ 表格（带边框样式）
-- ✅ 链接（可点击）
-- ✅ 图片
+- ✅ 链接和图片
 - ✅ 水平分隔线
-- ✅ Emoji 😊（彩色渲染）
+
+### 高级特性
+- ✅ 代码块（Mac 风格设计 + 语法高亮）
+- ✅ `行内代码`
+- ✅ 表格
 - ✅ 任务列表
+- ✅ Emoji 😊
 - ✅ GFM 扩展
 
-### 代码高亮支持
+### 语法高亮支持
+C#, JavaScript, TypeScript, Python, Java, C/C++, Go, Rust, SQL, Bash, HTML, CSS, JSON, XML 等
 
-- C# / JavaScript / TypeScript
-- Python / Java / C/C++
-- Go / Rust / Swift / Kotlin
-- SQL / Bash / PowerShell
-- HTML / CSS / JSON / XML
-
-## 🏗️ 架构设计
+## 🏗️ 项目结构
 
 ```
 MarkdView/
 ├── Controls/
 │   └── MarkdownViewer.xaml(.cs)    # 主控件
-├── Renderers/
-│   └── Blocks/
-│       └── CodeBlockRenderer.cs     # 代码块渲染器
-├── Extensions/
-│   ├── Controls/
-│   │   └── CodeBlockControl.xaml    # 代码块控件(复制功能)
-│   ├── Behaviors/                   # 自定义行为
-│   └── Converters/                  # 值转换器
+├── Services/
+│   ├── Theme/
+│   │   ├── ThemeResourceKeys.cs    # 主题资源键
+│   │   ├── ThemeService.cs         # 主题服务
+│   │   └── ThemeResourceManager.cs # 主题资源管理
+│   ├── SyntaxHighlight/
+│   │   └── SyntaxHighlighter.cs    # 语法高亮服务
+│   └── Renderers/
+│       ├── RenderingService.cs     # Markdown 渲染服务
+│       └── CodeBlockRenderer.cs    # 代码块渲染器
+├── ViewModels/
+│   └── MarkdownViewModel.cs        # Markdown ViewModel
 ├── Themes/
-│   ├── Light.xaml                   # 浅色主题
-│   ├── Dark.xaml                    # 深色主题
-│   └── HighContrast.xaml            # 高对比度主题
+│   ├── Light.xaml                  # 浅色主题
+│   └── Dark.xaml                   # 深色主题
 └── Samples/
-    ├── Markdown/                    # Markdown 示例
-    └── Themes/                      # 主题切换示例
+    └── Example.md                  # 功能示例
 ```
 
-## 🔄 对比其他库
+## 📊 性能特点
 
-| 特性 | MarkdView | Markdig.Wpf | MdXaml |
-|------|-----------|-------------|--------|
-| 流式渲染 | ✅ | ❌ | ❌ |
-| 语法高亮 | ✅ | ❌ | ⚠️ |
-| 现代样式 | ✅ | ❌ | ❌ |
-| 维护状态 | 🆕 | ⏸️ | ⏸️ |
-| 性能优化 | ✅ | ⚠️ | ⚠️ |
+- 流式更新使用 50ms 防抖优化
+- 支持大文档渲染
+- 优化的 Markdown 解析和渲染性能
 
-## 📊 性能
+## 🛠️ 技术栈
 
-- **首次渲染**: 1KB Markdown ~5ms
-- **流式更新**: 50ms 防抖，CPU < 5%
-- **大文档**: 100KB Markdown ~200ms
-- **内存占用**: ~2MB (小型文档)
-
-## 🛠️ 开发路线图
-
-### v1.0.0 (已发布)
-- [x] 基础渲染与流式支持
-- [x] 完整语法高亮（8+ 语言）
-- [x] Mac 风格代码块（三色圆点 + 复制按钮）
-- [x] Emoji 彩色渲染（基于 Emoji.Wpf）
-- [x] 完整主题系统（浅色/深色/高对比度）
-
-### v1.1.0 (计划)
-- [ ] 链接导航事件
-- [ ] 代码块行号显示
-- [ ] 更多语法高亮语言
-
-### v1.2.0 (计划)
-- [ ] LaTeX 数学公式支持
-- [ ] 虚拟化渲染（大文档优化）
-- [ ] 导出为 HTML/PDF
+- **.NET 8.0** - 现代化的 .NET 平台
+- **WPF** - Windows Presentation Foundation
+- **Markdig** - 高性能 Markdown 解析器
+- **Emoji.Wpf** - 彩色 Emoji 支持
+- **CommunityToolkit.Mvvm** - MVVM 工具包
 
 ## 🤝 贡献
 
@@ -199,7 +184,8 @@ MIT License - 详见 [LICENSE](LICENSE) 文件
 
 - [Markdig](https://github.com/xoofx/markdig) - 强大的 Markdown 解析器
 - [Emoji.Wpf](https://github.com/samhocevar/emoji.wpf) - WPF Emoji 彩色渲染
+- [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) - MVVM 工具包
 
 ---
 
-**Made with ❤️ for WPF & AI developers**
+**Made with ❤️ for WPF developers**

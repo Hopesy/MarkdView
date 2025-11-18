@@ -27,6 +27,7 @@
 
     <!-- H3 标题 - 字号20，半粗体，浅灰色 -->
     <SolidColorBrush x:Key="Markdown.Heading.H3.Foreground" Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="Markdown.Heading.H3.Border" Color="#4A4A4A"/>
 
     <!-- H4-H6 标题 -->
     <SolidColorBrush x:Key="Markdown.Heading.H4.Foreground" Color="#E0E0E0"/>
@@ -37,7 +38,7 @@
     <SolidColorBrush x:Key="Markdown.Heading.Foreground" Color="#E0E0E0"/>
     <SolidColorBrush x:Key="Markdown.Heading.Border" Color="#4A4A4A"/>
 
-    <!-- H1/H2 标题底部边框 -->
+    <!-- H1/H2/H3 标题底部边框 -->
     <Thickness x:Key="Markdown.Heading.BorderThickness">0,0,0,1</Thickness>
 
     <!-- ==================== 引用块样式 ==================== -->
