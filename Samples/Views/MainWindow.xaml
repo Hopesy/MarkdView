@@ -27,6 +27,6 @@
         </StackPanel>
         <!-- MarkdView 控件 - 主题由全局 ThemeManager 控制 -->
         <markd:MarkdownViewer x:Name="MarkdownViewer" Grid.Row="1" Margin="10" EnableSyntaxHighlighting="True"
-                  Theme="Dark"            FontSize="12" Content="{Binding Content}" />
+                  Theme="Light"            FontSize="12" Content="{Binding Content}" />
     </Grid>
 </Window>

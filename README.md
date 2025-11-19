@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/download)
-[![Version](https://img.shields.io/badge/Version-1.0.5-green.svg)](https://github.com/hopesy/MarkdView)
+[![Version](https://img.shields.io/badge/Version-1.0.6-green.svg)](https://github.com/hopesy/MarkdView)
 
 > 现代化 WPF Markdown 渲染控件，支持流式渲染、语法高亮和智能主题管理。
 
@@ -48,38 +48,62 @@ public partial class MainViewModel : ObservableObject
 
 ### 主题管理
 
-MarkdView 提供智能主题管理系统，支持两种使用模式：
+MarkdView 提供智能主题管理系统，基于全局静态变量 `ThemeManager.CurrentTheme` 作为唯一真实来源，支持两种使用模式：
 
 #### 模式 1：自动跟随全局主题（推荐）
 
-不设置 `Theme` 属性（默认 `Auto`），通过 `ThemeManager` 统一管理：
+不设置 `Theme` 属性（默认 `ThemeMode.Auto`），所有控件自动跟随全局主题：
 
 ```xaml
 <!-- 所有控件自动跟随全局主题 -->
 <markd:MarkdownViewer Content="{Binding Content}" />
+<!-- 或显式设置为 Auto -->
+<markd:MarkdownViewer Content="{Binding Content}" Theme="Auto" />
 ```
 
 ```csharp
 using MarkdView;
 using MarkdView.Enums;
 
-// 切换全局主题
+// 在应用启动时初始化全局主题
+public partial class App : Application
+{
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        // 初始化全局主题（所有 Theme="Auto" 的控件都会使用此主题）
+        ThemeManager.ApplyTheme(ThemeMode.Dark);
+    }
+}
+
+// 运行时切换全局主题
 ThemeManager.ApplyTheme(ThemeMode.Light);
 ThemeManager.ApplyTheme(ThemeMode.Dark);
 
-// 获取当前主题
-var currentTheme = ThemeManager.CurrentTheme;
+// 获取当前全局主题
+var currentTheme = ThemeManager.CurrentTheme; // 始终返回当前实际使用的主题
 ```
+
+**使用场景**：
+- ✅ 应用中所有 Markdown 内容使用统一主题
+- ✅ 主题由应用级别统一管理（如跟随系统主题）
+- ✅ 简化主题管理逻辑
 
 #### 模式 2：独立主题设置
 
-显式设置 `Theme` 属性，控件使用独立主题（同时同步到全局）：
+显式设置 `Theme` 属性为 `Light` 或 `Dark`，控件使用独立主题（并同步到全局）：
 
 ```xaml
-<!-- 控件使用独立主题 -->
+<!-- 控件使用独立主题（数据绑定） -->
 <markd:MarkdownViewer
     Content="{Binding Content}"
     Theme="{Binding Theme}" />
+
+<!-- 或直接设置固定主题 -->
+<markd:MarkdownViewer
+    Content="{Binding Content}"
+    Theme="Dark" />
 ```
 
 ```csharp
@@ -89,23 +113,45 @@ public partial class MainViewModel : ObservableObject
     private ThemeMode _theme = ThemeMode.Dark;
 
     [RelayCommand]
-    private void SwitchToLight() => Theme = ThemeMode.Light;
+    private void SwitchToLight()
+    {
+        // 修改此属性会：
+        // 1. 更新控件主题
+        // 2. 同步更新 ThemeManager.CurrentTheme
+        Theme = ThemeMode.Light;
+    }
 
     [RelayCommand]
-    private void SwitchToDark() => Theme = ThemeMode.Dark;
+    private void SwitchToDark()
+    {
+        Theme = ThemeMode.Dark;
+    }
 }
 ```
+
+**使用场景**：
+- ✅ 不同 Markdown 内容需要使用不同主题
+- ✅ 主题切换由特定控件或 ViewModel 管理
+- ✅ 需要通过数据绑定动态切换主题
 
 #### ThemeMode 枚举
 
 ```csharp
 public enum ThemeMode
 {
-    Auto = 0,   // 自动跟随全局主题（默认）
+    Auto = 0,   // 自动跟随全局主题（默认，推荐）
     Light = 1,  // 浅色主题
     Dark = 2    // 深色主题
 }
 ```
+
+#### 主题同步机制
+
+无论使用哪种模式，`ThemeManager.CurrentTheme` 始终反映当前实际使用的主题：
+- **模式 1**：`ThemeManager.ApplyTheme()` 更新全局主题 → 所有 `Theme="Auto"` 的控件自动跟随
+- **模式 2**：控件 `Theme` 属性改变 → 更新控件主题并同步到 `ThemeManager.CurrentTheme`
+
+这种设计确保了无论通过哪种方式改变主题，所有控件都能保持同步。
 
 ### 完整配置
 
@@ -124,7 +170,7 @@ public enum ThemeMode
 
 ### 列表场景使用
 
-在 `ScrollViewer` 中使用多个 `MarkdownViewer`（如聊天消息列表）：
+在 `ScrollViewer` 中使用多个 `MarkdownViewer`（如聊天消息列表），需要禁用内部滚动条以实现流畅的外层滚动体验：
 
 ```xaml
 <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -132,6 +178,7 @@ public enum ThemeMode
         <ItemsControl.ItemTemplate>
             <DataTemplate>
                 <Border Margin="10" Padding="15" Background="White">
+                    <!-- 重要：必须禁用 MarkdownViewer 的滚动条 -->
                     <markd:MarkdownViewer
                         Content="{Binding Content}"
                         VerticalScrollBarVisibility="Disabled"
@@ -142,6 +189,25 @@ public enum ThemeMode
     </ItemsControl>
 </ScrollViewer>
 ```
+
+#### 列表场景滚动行为说明
+
+**⚠️ 必须设置的属性**：
+- 必须将 `VerticalScrollBarVisibility="Disabled"` 设置在每个 `MarkdownViewer` 上
+- 必须将 `HorizontalScrollBarVisibility="Disabled"` 设置在每个 `MarkdownViewer` 上
+
+**🎯 滚动行为**：
+1. **外层文档滚动**：鼠标滚轮事件会自动转发给外层 `ScrollViewer`，实现流畅的列表滚动
+2. **代码块滚动**：
+   - 鼠标滚轮始终控制外层文档滚动（不会被代码块拦截）
+   - 代码块内容只能通过拖动滚动条来滚动
+   - 这样设计避免了滚动冲突，提供更好的用户体验
+3. **透明容器支持**：即使外层 `Border` 背景设置为透明，滚动功能依然正常工作
+
+**💡 代码块操作提示**：
+- 复制代码：点击代码块右上角的复制按钮
+- 滚动代码：拖动代码块内的滚动条（不支持鼠标滚轮）
+- 文本选择：由于 WPF TextBlock 限制，暂不支持直接选中代码文本
 
 ## 🎨 主题定制
 
