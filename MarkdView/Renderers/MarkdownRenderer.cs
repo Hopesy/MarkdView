@@ -11,8 +11,7 @@ using System.Windows.Navigation;
 using Markdig;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
-using MarkdView.Services.Theme;
-using MarkdView.Services.SyntaxHighlight;
+using MarkdView.Services;
 using Emoji.Wpf;
 using WpfBlock = System.Windows.Documents.Block;
 using WpfInline = System.Windows.Documents.Inline;
@@ -27,10 +26,14 @@ namespace MarkdView.Renderers;
 public class MarkdownRenderer
 {
     private readonly MarkdownPipeline _pipeline;
+    private double _baseFontSize;
+    private FontFamily _fontFamily;
 
     public MarkdownRenderer(MarkdownPipeline pipeline)
     {
         _pipeline = pipeline;
+        _baseFontSize = 12.0;
+        _fontFamily = new FontFamily("Microsoft YaHei UI, Segoe UI");
     }
 
     /// <summary>
@@ -43,6 +46,10 @@ public class MarkdownRenderer
         bool enableSyntaxHighlighting,
         CodeBlockRenderer? codeBlockRenderer = null)
     {
+        // 保存基础字体设置，供子元素使用
+        _baseFontSize = fontSize;
+        _fontFamily = fontFamily;
+
         // 解析 Markdown 为 AST
         var document = Markdown.Parse(markdown ?? string.Empty, _pipeline);
 
@@ -82,14 +89,14 @@ public class MarkdownRenderer
     /// <summary>
     /// 将 Markdig Block 转换为 WPF Block
     /// </summary>
-    private WpfBlock? ConvertBlock(MarkdigBlock block, bool enableSyntaxHighlighting, CodeBlockRenderer? codeBlockRenderer)
+    private WpfBlock? ConvertBlock(MarkdigBlock block, bool enableSyntaxHighlighting, CodeBlockRenderer? codeBlockRenderer, int listLevel = 0)
     {
         return block switch
         {
             HeadingBlock heading => ConvertHeading(heading),
             ParagraphBlock paragraph => ConvertParagraph(paragraph),
             QuoteBlock quote => ConvertQuote(quote, enableSyntaxHighlighting, codeBlockRenderer),
-            ListBlock list => ConvertList(list, enableSyntaxHighlighting, codeBlockRenderer),
+            ListBlock list => ConvertList(list, enableSyntaxHighlighting, codeBlockRenderer, listLevel),
             CodeBlock code => ConvertCodeBlock(code, codeBlockRenderer),
             ThematicBreakBlock => ConvertThematicBreak(),
             _ => null
@@ -113,17 +120,19 @@ public class MarkdownRenderer
         // H3 使用 H2 的样式
         var styleKey = level == 3 ? "H2" : levelKey;
 
-        paragraph.FontSize = GetFontSize($"Markdown.Heading.{levelKey}.FontSize",
-            level switch
-            {
-                1 => 28,
-                2 => 24,
-                3 => 20,
-                4 => 17,
-                5 => 15,
-                6 => 15,
-                _ => 16
-            });
+        // 标题字体大小基于基础字体大小按比例缩放
+        // 比例系数：H1=1.5, H2=1.25, H3=1.17, H4=1.08, H5=1.0, H6=1.0
+        var sizeRatio = level switch
+        {
+            1 => 1.5,
+            2 => 1.25,
+            3 => 1.17,
+            4 => 1.08,
+            5 => 1.0,
+            6 => 1.0,
+            _ => 1.08
+        };
+        paragraph.FontSize = _baseFontSize * sizeRatio;
 
         // 使用动态资源绑定标题前景色（H3 使用 H2 的颜色，默认深色主题）
         SetDynamicResource(paragraph, Paragraph.ForegroundProperty,
@@ -215,27 +224,61 @@ public class MarkdownRenderer
     /// <summary>
     /// 转换列表块
     /// </summary>
-    private WpfBlock ConvertList(ListBlock list, bool enableSyntaxHighlighting, CodeBlockRenderer? codeBlockRenderer)
+    private WpfBlock ConvertList(ListBlock list, bool enableSyntaxHighlighting, CodeBlockRenderer? codeBlockRenderer, int listLevel = 0)
     {
         var wpfList = list.IsOrdered ? (WpfBlock)new List() : new List();
 
         if (wpfList is List listElement)
         {
+            // 计算左侧填充：一级列表留出标记空间，嵌套列表每层增加少量缩进
+            var leftPadding = listLevel == 0 ? 20 : (20 + listLevel * 5);
             listElement.Margin = new Thickness(0, 8, 0, 8);
-            listElement.Padding = new Thickness(0, 0, 0, 0);
-            listElement.MarkerStyle = list.IsOrdered ? TextMarkerStyle.Decimal : TextMarkerStyle.Disc;
+            listElement.Padding = new Thickness(leftPadding, 0, 0, 0);
+
+            // 先设置标记样式（在设置其他属性之前）
+            // 一级列表：有序=数字，无序=实心圆点
+            // 嵌套列表：统一使用空心圆圈
+            if (listLevel == 0)
+            {
+                listElement.MarkerStyle = list.IsOrdered ? TextMarkerStyle.Decimal : TextMarkerStyle.Disc;
+                // 一级列表标记稍大一些（原点更明显），基于基础字体大小的 1.08 倍
+                listElement.FontSize = _baseFontSize * 1.08;
+            }
+            else
+            {
+                listElement.MarkerStyle = TextMarkerStyle.Circle;  // 嵌套列表统一用空心圆圈
+                // 嵌套列表标记稍小一些（空心圆圈不会太大），基于基础字体大小的 0.96 倍
+                listElement.FontSize = _baseFontSize * 0.96;
+            }
+
+            listElement.MarkerOffset = 0;   // 标记紧贴文字
+            listElement.StartIndex = 1;     // 有序列表起始序号
+
+            // 不设置 Foreground，让标记继承 FlowDocument 的前景色
 
             foreach (var item in list)
             {
                 if (item is ListItemBlock listItem)
                 {
-                    var listItemElement = new ListItem();
+                    var listItemElement = new ListItem
+                    {
+                        Margin = new Thickness(0, 4, 0, 4),  // 列表项之间的间距
+                        Padding = new Thickness(0, 0, 0, 0)
+                    };
 
                     foreach (var block in listItem)
                     {
-                        var element = ConvertBlock(block, enableSyntaxHighlighting, codeBlockRenderer);
+                        // 传递 listLevel + 1 给嵌套列表
+                        var element = ConvertBlock(block, enableSyntaxHighlighting, codeBlockRenderer, listLevel + 1);
                         if (element != null)
+                        {
+                            // 减少列表项内部段落的 Margin，避免间距过大
+                            if (element is Paragraph para)
+                            {
+                                para.Margin = new Thickness(0, 0, 0, 0);
+                            }
                             listItemElement.Blocks.Add(element);
+                        }
                     }
 
                     listElement.ListItems.Add(listItemElement);
@@ -269,7 +312,8 @@ public class MarkdownRenderer
             Background = GetBrush("Markdown.CodeBlock.Background", Color.FromRgb(0x28, 0x2C, 0x34)),
             Foreground = GetBrush("Markdown.CodeBlock.Foreground", Color.FromRgb(0xAB, 0xB2, 0xBF)),
             FontFamily = GetFontFamily("Markdown.CodeFontFamily", "Consolas, Monaco, Courier New, monospace"),
-            FontSize = GetFontSize("Markdown.CodeFontSize", 13),
+            // 代码块字体大小基于基础字体大小的 0.92 倍
+            FontSize = _baseFontSize * 0.92,
             Padding = new Thickness(12)
         };
 
@@ -360,7 +404,8 @@ public class MarkdownRenderer
         var span = new Span
         {
             FontFamily = GetFontFamily("Markdown.CodeFontFamily", "Consolas, Monaco, Courier New, monospace"),
-            FontSize = GetFontSize("Markdown.InlineCodeFontSize", 13)
+            // 行内代码字体大小基于基础字体大小的 0.92 倍
+            FontSize = _baseFontSize * 0.92
         };
 
         // 使用动态资源绑定内联代码的背景和前景色（默认深色主题）

@@ -6,9 +6,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Markdig;
-using MarkdView.Services.Theme;
+using MarkdView.Enums;
 using MarkdView.Renderers;
-using MarkdView.ViewModels;
 
 namespace MarkdView.Controls;
 
@@ -76,6 +75,11 @@ public class MarkdownViewer : ContentControl
             _pendingText = markdownText;
             _hasPendingUpdate = true;
             _updateTimer.Stop();
+
+            // 自适应防抖：根据文档长度动态调整防抖时间
+            var adaptiveThrottle = CalculateAdaptiveThrottle(markdownText.Length);
+            _updateTimer.Interval = TimeSpan.FromMilliseconds(adaptiveThrottle);
+
             _updateTimer.Start();
         }
         else
@@ -112,7 +116,7 @@ public class MarkdownViewer : ContentControl
             nameof(Theme),
             typeof(ThemeMode),
             typeof(MarkdownViewer),
-            new PropertyMetadata(ThemeMode.Dark, OnThemeChanged));
+            new PropertyMetadata(ThemeMode.Auto, OnThemeChanged));
 
     public new static readonly DependencyProperty FontFamilyProperty =
         DependencyProperty.Register(
@@ -126,7 +130,7 @@ public class MarkdownViewer : ContentControl
             nameof(FontSize),
             typeof(double),
             typeof(MarkdownViewer),
-            new PropertyMetadata(14.0, OnFontSizeChanged));
+            new PropertyMetadata(12.0, OnFontSizeChanged));
 
     public static readonly DependencyProperty VerticalScrollBarVisibilityProperty =
         DependencyProperty.Register(
@@ -212,6 +216,10 @@ public class MarkdownViewer : ContentControl
     private string _lastRenderedText = string.Empty;
     private string _pendingText = string.Empty;
     private bool _hasPendingUpdate;
+    private DateTime _lastRenderTime = DateTime.MinValue;
+    private const int MinRenderIntervalMs = 300; // 最小渲染间隔 300ms（防止卡顿）
+    private int _skipFrameCount = 0; // 跳帧计数器
+    private bool _isRendering = false; // 防止重入渲染标志
 
     // 服务
     private readonly MarkdownRenderer _renderingService;
@@ -273,7 +281,11 @@ public class MarkdownViewer : ContentControl
         // 订阅主题应用完成事件
         ThemeManager.ThemeApplied += OnThemeApplied;
 
-        Console.WriteLine($"[MarkdownViewer] Constructor END");
+        // 在 MarkdownViewer 级别处理鼠标滚轮事件，确保即使外部容器透明也能工作
+        this.PreviewMouseWheel += OnControlPreviewMouseWheel;
+
+        // 主题会通过 OnThemeChanged 回调自动应用，这里不需要手动调用
+        Console.WriteLine($"[MarkdownViewer] Constructor END, Theme={Theme}");
     }
 
     public override void OnApplyTemplate()
@@ -343,7 +355,20 @@ public class MarkdownViewer : ContentControl
         if (d is MarkdownViewer viewer)
         {
             var newTheme = (ThemeMode)e.NewValue;
-            ThemeManager.ApplyTheme(newTheme);
+            Console.WriteLine($"[MarkdownViewer] OnThemeChanged: {e.OldValue} -> {newTheme}");
+
+            if (newTheme == ThemeMode.Auto)
+            {
+                // Auto 模式：跟随全局主题
+                Console.WriteLine($"[MarkdownViewer] Theme=Auto, using ThemeManager.CurrentTheme={ThemeManager.CurrentTheme}");
+                ThemeManager.ApplyTheme(ThemeManager.CurrentTheme);
+            }
+            else
+            {
+                // 显式设置主题：同步到全局并应用
+                Console.WriteLine($"[MarkdownViewer] Theme explicitly set to {newTheme}, syncing to ThemeManager");
+                ThemeManager.ApplyTheme(newTheme);
+            }
         }
     }
 
@@ -413,6 +438,31 @@ public class MarkdownViewer : ContentControl
 
         if (_hasPendingUpdate)
         {
+            // 检查距离上次渲染的时间间隔
+            var timeSinceLastRender = (DateTime.Now - _lastRenderTime).TotalMilliseconds;
+
+            if (timeSinceLastRender < MinRenderIntervalMs)
+            {
+                // 如果距离上次渲染时间太短，延迟渲染
+                var remainingDelay = (int)(MinRenderIntervalMs - timeSinceLastRender);
+                _updateTimer.Interval = TimeSpan.FromMilliseconds(remainingDelay);
+                _updateTimer.Start();
+
+                _skipFrameCount++;
+                if (_skipFrameCount % 5 == 0)
+                {
+                    Console.WriteLine($"[MarkdownViewer] 跳帧保护: 已跳过 {_skipFrameCount} 帧，等待 {remainingDelay}ms");
+                }
+                return;
+            }
+
+            // 重置跳帧计数
+            if (_skipFrameCount > 0)
+            {
+                Console.WriteLine($"[MarkdownViewer] 跳帧结束: 共跳过 {_skipFrameCount} 帧");
+                _skipFrameCount = 0;
+            }
+
             _lastRenderedText = _pendingText;
             _hasPendingUpdate = false;
             RenderMarkdown();
@@ -424,6 +474,13 @@ public class MarkdownViewer : ContentControl
     /// </summary>
     private void RenderMarkdown()
     {
+        // 防止重入渲染（避免死锁和无限循环）
+        if (_isRendering)
+        {
+            Console.WriteLine($"[MarkdownViewer] RenderMarkdown SKIPPED: 渲染正在进行中，防止重入");
+            return;
+        }
+
         // 确保所有必需的服务和控件已初始化
         if (_renderingService == null || MarkdownDocument == null)
         {
@@ -431,48 +488,95 @@ public class MarkdownViewer : ContentControl
             return;
         }
 
-        Console.WriteLine($"[MarkdownViewer] RenderMarkdown: text length={_lastRenderedText.Length}, scrollBarVisibility={MarkdownDocument.VerticalScrollBarVisibility}");
+        _isRendering = true;
+        Console.WriteLine($"[MarkdownViewer] RenderMarkdown START: text length={_lastRenderedText.Length}");
+
+        // 记录渲染开始时间
+        var renderStartTime = DateTime.Now;
+
+        // 捕获需要的变量（避免闭包问题）
+        var textToRender = _lastRenderedText;
+        var fontFamily = FontFamily;
+        var fontSize = FontSize;
+        var enableHighlighting = EnableSyntaxHighlighting;
+        // 如果 Theme=Auto，使用全局主题；否则使用控件自己的主题设置
+        var theme = Theme == ThemeMode.Auto ? ThemeManager.CurrentTheme : Theme;
+
+        // 使用低优先级异步渲染，保持 UI 响应
+        Dispatcher.InvokeAsync(() =>
+        {
+            try
+            {
+                if (MarkdownDocument == null)
+                {
+                    _isRendering = false;
+                    return;
+                }
+
+                // 创建代码块渲染器
+                var codeBlockRenderer = new Renderers.CodeBlockRenderer(
+                    enableHighlighting,
+                    theme,
+                    fontSize);
+
+                // 在 UI 线程解析和创建 FlowDocument（但使用低优先级，让 UI 保持响应）
+                var flowDocument = _renderingService.ConvertMarkdownToFlowDocument(
+                    textToRender,
+                    fontFamily,
+                    fontSize,
+                    enableHighlighting,
+                    codeBlockRenderer);
+
+                Console.WriteLine($"[MarkdownViewer] FlowDocument created with {flowDocument.Blocks.Count} blocks");
+
+                // 设置Document
+                MarkdownDocument.Document = flowDocument;
+
+                // 配置FlowDocument的页面属性
+                ConfigureFlowDocument(flowDocument);
+
+                // 记录渲染完成时间
+                _lastRenderTime = renderStartTime;
+                var totalTime = (DateTime.Now - renderStartTime).TotalMilliseconds;
+                Console.WriteLine($"[MarkdownViewer] Render completed in {totalTime:F1}ms");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MarkdownViewer] Render ERROR: {ex.Message}");
+                ShowErrorDocument(ex.Message);
+            }
+            finally
+            {
+                _isRendering = false;
+            }
+        }, System.Windows.Threading.DispatcherPriority.Background); // 使用 Background 优先级，保持 UI 响应
+    }
+
+    private void ShowErrorDocument(string errorMessage)
+    {
+        if (MarkdownDocument == null) return;
 
         try
         {
-            // 创建代码块渲染器
-            var codeBlockRenderer = new Renderers.CodeBlockRenderer(
-                EnableSyntaxHighlighting,
-                Theme);
-
-            // 使用渲染服务转换 Markdown
-            var flowDocument = _renderingService.ConvertMarkdownToFlowDocument(
-                _lastRenderedText,
-                FontFamily,
-                FontSize,
-                EnableSyntaxHighlighting,
-                codeBlockRenderer);
-
-            Console.WriteLine($"[MarkdownViewer] FlowDocument created with {flowDocument.Blocks.Count} blocks");
-
-            // 先设置Document
-            MarkdownDocument.Document = flowDocument;
-
-            // 然后立即配置FlowDocument的页面属性（必须在设置Document之后）
-            ConfigureFlowDocument(flowDocument);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[MarkdownViewer] RenderMarkdown ERROR: {ex.Message}");
+            Console.WriteLine($"[MarkdownViewer] ShowErrorDocument: {errorMessage}");
 
             // 渲染错误时显示错误信息
             var errorDocument = new FlowDocument();
-            var errorParagraph = new Paragraph(new Run($"Markdown 渲染错误: {ex.Message}"))
+            var errorParagraph = new Paragraph(new Run($"Markdown 渲染错误: {errorMessage}"))
             {
                 Foreground = Brushes.Red
             };
             errorDocument.Blocks.Add(errorParagraph);
 
-            // 先设置Document
+            // 设置Document
             MarkdownDocument.Document = errorDocument;
 
-            // 然后配置错误文档
+            // 配置错误文档
             ConfigureFlowDocument(errorDocument);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MarkdownViewer] ShowErrorDocument ERROR: {ex.Message}");
         }
     }
 
@@ -506,6 +610,15 @@ public class MarkdownViewer : ContentControl
     /// </summary>
     private void OnThemeApplied(object? sender, EventArgs e)
     {
+        Console.WriteLine($"[MarkdownViewer] OnThemeApplied: Theme={Theme}, ThemeManager.CurrentTheme={ThemeManager.CurrentTheme}");
+
+        // 如果控件设置为 Auto 模式，需要重新渲染以应用新的全局主题
+        if (Theme == ThemeMode.Auto)
+        {
+            Console.WriteLine($"[MarkdownViewer] Theme=Auto, re-rendering with global theme");
+        }
+
+        // 无论哪种模式，都需要重新渲染以更新主题相关的样式
         RenderMarkdown();
     }
 
@@ -585,11 +698,11 @@ public class MarkdownViewer : ContentControl
     }
 
     /// <summary>
-    /// 处理鼠标滚轮事件 - 将事件冒泡到父级容器
+    /// 控件级别的鼠标滚轮事件处理 - 确保在任何外部容器配置下都能正确工作
     /// </summary>
-    private void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    private void OnControlPreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        // 如果禁用了垂直滚动条，需要手动将滚轮事件转发给父级ScrollViewer
+        // 如果禁用了垂直滚动条（列表场景），需要将滚轮事件转发给父级ScrollViewer
         if (VerticalScrollBarVisibility == ScrollBarVisibility.Disabled)
         {
             // 如果还没缓存，尝试查找父级ScrollViewer
@@ -602,7 +715,7 @@ public class MarkdownViewer : ContentControl
             // 如果找到了父级ScrollViewer，手动触发滚动
             if (_cachedParentScrollViewer != null)
             {
-                // 标记事件为已处理，防止FlowDocumentScrollViewer处理它
+                // 标记事件为已处理，防止内部控件再次处理
                 e.Handled = true;
 
                 // 计算滚动偏移量
@@ -610,6 +723,17 @@ public class MarkdownViewer : ContentControl
                 _cachedParentScrollViewer.ScrollToVerticalOffset(offset);
             }
         }
+        // 如果启用了滚动条，但控件本身能够接收事件，确保事件不会被吞掉
+        // （这里不需要特殊处理，让事件继续传递给内部的 FlowDocumentScrollViewer）
+    }
+
+    /// <summary>
+    /// FlowDocumentScrollViewer 的鼠标滚轮事件处理（保留用于兼容性）
+    /// </summary>
+    private void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        // 这个方法现在主要由 OnControlPreviewMouseWheel 处理
+        // 保留此方法是为了向后兼容，避免移除后可能的问题
     }
 
     /// <summary>
@@ -627,6 +751,43 @@ public class MarkdownViewer : ContentControl
             parent = VisualTreeHelper.GetParent(parent);
         }
         return null;
+    }
+
+    /// <summary>
+    /// 根据文档长度计算自适应防抖时间（更激进的策略防止卡顿）
+    /// </summary>
+    private int CalculateAdaptiveThrottle(int contentLength)
+    {
+        // 基础防抖时间
+        var baseThrottle = StreamingThrottle;
+
+        // 更激进的防抖策略，防止 AI 流式渲染时卡顿
+        // 0-2KB: 使用基础防抖时间（50ms）
+        // 2KB-10KB: 线性增加到 300ms
+        // 10KB-50KB: 线性增加到 600ms
+        // 50KB+: 使用 1000ms
+
+        if (contentLength < 2000)
+        {
+            return baseThrottle;
+        }
+        else if (contentLength < 10000)
+        {
+            // 2KB-10KB: 50ms -> 300ms
+            var ratio = (contentLength - 2000) / 8000.0;
+            return (int)(baseThrottle + ratio * (300 - baseThrottle));
+        }
+        else if (contentLength < 50000)
+        {
+            // 10KB-50KB: 300ms -> 600ms
+            var ratio = (contentLength - 10000) / 40000.0;
+            return (int)(300 + ratio * 300);
+        }
+        else
+        {
+            // 50KB+: 1000ms
+            return 1000;
+        }
     }
 
     #endregion

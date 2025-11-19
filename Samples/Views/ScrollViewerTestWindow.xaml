@@ -142,7 +142,7 @@ console.log(fibonacci(10));
                         <StackPanel>
                             <TextBlock Margin="0,0,0,10" FontSize="14" FontWeight="Bold" Foreground="#333333"
                                        Text="卡片 5 - 完整文档示例" />
-                            <markd:MarkdownViewer EnableSyntaxHighlighting="True"
+                            <markd:MarkdownViewer EnableSyntaxHighlighting="True" Theme="Dark"
                                                   Content="{Binding Content}"
                                                   />
                         </StackPanel>

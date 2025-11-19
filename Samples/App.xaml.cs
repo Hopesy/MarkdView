@@ -1,7 +1,6 @@
 ﻿using System.Configuration;
 using System.Data;
 using System.Windows;
-using MarkdView.Services.Theme;
 
 namespace Samples
 {
@@ -14,8 +13,8 @@ namespace Samples
         {
             base.OnStartup(e);
 
-            // 初始化默认主题为浅色
-            ThemeManager.ApplyTheme(ThemeMode.Light);
+            // 不在这里初始化主题，让 MarkdownViewer 控件自己的 Theme 属性决定
+            // ThemeManager.ApplyTheme(ThemeMode.Light);
         }
     }
 

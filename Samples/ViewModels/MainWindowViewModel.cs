@@ -3,8 +3,8 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MarkdView;
-using MarkdView.Services.Theme;
-using MarkdView.ViewModels;
+using MarkdView.Enums;
+
 
 namespace Samples.ViewModels;
 

@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
 
-namespace MarkdView.Services.SyntaxHighlight;
+namespace MarkdView.Services;
 
 /// <summary>
 /// 代码语法高亮器

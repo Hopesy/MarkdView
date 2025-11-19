@@ -2,7 +2,8 @@ using System;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MarkdView.Services.Theme;
+using MarkdView;
+using MarkdView.Enums;
 using Samples.Models;
 
 namespace Samples.ViewModels;

@@ -7,7 +7,7 @@
     <UseWPF>true</UseWPF>
     <!-- NuGet 包信息 -->
     <PackageId>MarkdView</PackageId>
-    <Version>1.0.1</Version>
+    <Version>1.0.5</Version>
     <Authors>Hopesy</Authors>
     <Company>MinoChat</Company>
     <Product>MarkdView</Product>
@@ -26,16 +26,16 @@
   <ItemGroup>
     <None Include="..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+    <None Include="icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
   <!--依赖其他包-->
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Emoji.Wpf" Version="0.3.4" />
     <PackageReference Include="Markdig" Version="0.43.0" />
   </ItemGroup>
   <!-- 主题资源字典 -->
   <ItemGroup>
-    <Resource Include="Themes\Dark.xaml" />
-    <Resource Include="Themes\Light.xaml" />
+    <Resource Include="Themes\MarkdView.Dark.xaml" />
+    <Resource Include="Themes\MarkdView.Light.xaml" />
   </ItemGroup>
 </Project>

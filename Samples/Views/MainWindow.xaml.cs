@@ -33,4 +33,29 @@ public partial class MainWindow : Window
         var testWindow = new MarkdownListTestWindow();
         testWindow.Show();
     }
+
+    private void SetFontSize10_Click(object sender, RoutedEventArgs e)
+    {
+        MarkdownViewer.FontSize = 10;
+    }
+
+    private void SetFontSize12_Click(object sender, RoutedEventArgs e)
+    {
+        MarkdownViewer.FontSize = 12;
+    }
+
+    private void SetFontSize14_Click(object sender, RoutedEventArgs e)
+    {
+        MarkdownViewer.FontSize = 14;
+    }
+
+    private void SetFontSize16_Click(object sender, RoutedEventArgs e)
+    {
+        MarkdownViewer.FontSize = 16;
+    }
+
+    private void SetFontSize20_Click(object sender, RoutedEventArgs e)
+    {
+        MarkdownViewer.FontSize = 20;
+    }
 }

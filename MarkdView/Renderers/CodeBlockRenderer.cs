@@ -5,9 +5,9 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
-using MarkdView.Services.Theme;
-using MarkdView.Services.SyntaxHighlight;
+using MarkdView.Services;
 using MarkdView;
+using MarkdView.Enums;
 
 namespace MarkdView.Renderers;
 
@@ -18,11 +18,13 @@ public class CodeBlockRenderer
 {
     private readonly bool _enableSyntaxHighlighting;
     private readonly ThemeMode _themeMode;
+    private readonly double _baseFontSize;
 
-    public CodeBlockRenderer(bool enableSyntaxHighlighting, ThemeMode themeMode = ThemeMode.Dark)
+    public CodeBlockRenderer(bool enableSyntaxHighlighting, ThemeMode themeMode = ThemeMode.Dark, double baseFontSize = 12.0)
     {
         _enableSyntaxHighlighting = enableSyntaxHighlighting;
         _themeMode = themeMode;
+        _baseFontSize = baseFontSize;
     }
 
     /// <summary>
@@ -91,7 +93,7 @@ public class CodeBlockRenderer
             var langLabel = new TextBlock
             {
                 Text = language,
-                FontSize = 12,
+                FontSize = _baseFontSize * 1.0,  // 基于基础字体大小
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -166,7 +168,7 @@ public class CodeBlockRenderer
             Margin = new Thickness(0, 0, 12, 0),
             Padding = new Thickness(12, 4, 12, 4),
             BorderThickness = new Thickness(0),
-            FontSize = 12,
+            FontSize = _baseFontSize * 1.0,  // 基于基础字体大小
             Cursor = Cursors.Hand,
             Tag = code,
             Template = CreateCopyButtonTemplate()
@@ -311,13 +313,10 @@ public class CodeBlockRenderer
             TextWrapping = TextWrapping.NoWrap
         };
 
-        // 使用动态资源绑定字体（也可以使用静态获取，字体通常不会频繁改变）
-        SetDynamicResource(codeTextBlock, TextBlock.FontFamilyProperty,
-            "Markdown.CodeFontFamily",
-            new FontFamily("Consolas, Monaco, Courier New, monospace"));
-        SetDynamicResource(codeTextBlock, TextBlock.FontSizeProperty,
-            "Markdown.CodeFontSize",
-            13.5);
+        // 设置代码块字体
+        codeTextBlock.FontFamily = new FontFamily("Consolas, Monaco, Courier New, monospace");
+        // 代码内容字体大小基于基础字体大小的 0.92 倍
+        codeTextBlock.FontSize = _baseFontSize * 0.92;
 
         // 启用语法高亮
         if (_enableSyntaxHighlighting)

@@ -2,20 +2,21 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/download)
-[![Version](https://img.shields.io/badge/Version-1.0.1-green.svg)](https://github.com/MinoChat/MarkdView)
+[![Version](https://img.shields.io/badge/Version-1.0.5-green.svg)](https://github.com/hopesy/MarkdView)
 
-> 现代化 WPF Markdown 渲染控件，支持流式渲染和语法高亮
+> 现代化 WPF Markdown 渲染控件，支持流式渲染、语法高亮和智能主题管理。
 
 ## ✨ 特性
 
-- 🚀 **流式渲染** - 支持 AI 流式输出，50ms 防抖优化
+- 🚀 **智能流式渲染** - 支持 AI 流式输出，自适应防抖优化（50ms-1000ms）
 - 🎨 **语法高亮** - 内置多语言高亮支持
 - 😊 **Emoji 支持** - 基于 Emoji.Wpf 的彩色 Emoji 渲染
 - 💻 **Mac 风格代码块** - 带装饰性圆点的优雅代码展示
-- 🌓 **主题切换** - 浅色/深色主题，支持自定义
-- 📦 **MVVM 架构** - 完整支持数据绑定
-- ⚡ **高性能** - 优化的渲染性能
+- 🌓 **智能主题管理** - 支持自动跟随全局主题或独立设置
+- 📐 **比例字体缩放** - 所有文本元素随 FontSize 成比例缩放
 - 🔧 **易扩展** - 基于 Markdig，支持丰富的 Markdown 特性
+- ⚡ **高性能** - 重入保护、低优先级异步渲染，确保 UI 流畅
+- 📜 **列表场景优化** - 支持在 ScrollViewer 中禁用内部滚动条
 
 ## 📦 安装
 
@@ -27,18 +28,13 @@ Install-Package MarkdView
 dotnet add package MarkdView
 ```
 
-**从源码引用**（当前阶段）:
-```xml
-<ProjectReference Include="..\MarkdView\MarkdView.csproj" />
-```
-
 ## 🚀 快速开始
 
 ### 基础用法
 
 ```xaml
 <Window xmlns:markd="clr-namespace:MarkdView.Controls;assembly=MarkdView">
-    <markd:MarkdownViewer Markdown="{Binding Content}" />
+    <markd:MarkdownViewer Content="{Binding Content}" />
 </Window>
 ```
 
@@ -50,22 +46,45 @@ public partial class MainViewModel : ObservableObject
 }
 ```
 
-### 主题切换
+### 主题管理
 
-MarkdownViewer 支持浅色和深色两种主题，**无需在 App.xaml 中配置**，创建控件时会自动加载主题资源。
+MarkdView 提供智能主题管理系统，支持两种使用模式：
+
+#### 模式 1：自动跟随全局主题（推荐）
+
+不设置 `Theme` 属性（默认 `Auto`），通过 `ThemeManager` 统一管理：
 
 ```xaml
+<!-- 所有控件自动跟随全局主题 -->
+<markd:MarkdownViewer Content="{Binding Content}" />
+```
+
+```csharp
+using MarkdView;
+using MarkdView.Enums;
+
+// 切换全局主题
+ThemeManager.ApplyTheme(ThemeMode.Light);
+ThemeManager.ApplyTheme(ThemeMode.Dark);
+
+// 获取当前主题
+var currentTheme = ThemeManager.CurrentTheme;
+```
+
+#### 模式 2：独立主题设置
+
+显式设置 `Theme` 属性，控件使用独立主题（同时同步到全局）：
+
+```xaml
+<!-- 控件使用独立主题 -->
 <markd:MarkdownViewer
-    Markdown="{Binding Content}"
+    Content="{Binding Content}"
     Theme="{Binding Theme}" />
 ```
 
 ```csharp
 public partial class MainViewModel : ObservableObject
 {
-    [ObservableProperty]
-    private string _content = "";
-
     [ObservableProperty]
     private ThemeMode _theme = ThemeMode.Dark;
 
@@ -77,22 +96,14 @@ public partial class MainViewModel : ObservableObject
 }
 ```
 
-**手动初始化主题**（可选）：
-
-如果需要在应用启动时就加载主题资源（例如在其他控件中使用主题颜色），可以在 `App.xaml.cs` 中手动初始化：
+#### ThemeMode 枚举
 
 ```csharp
-using MarkdView.Services.Theme;
-
-public partial class App : Application
+public enum ThemeMode
 {
-    protected override void OnStartup(StartupEventArgs e)
-    {
-        base.OnStartup(e);
-
-        // 手动加载主题资源
-        ThemeManager.ApplyTheme(ThemeMode.Dark);
-    }
+    Auto = 0,   // 自动跟随全局主题（默认）
+    Light = 1,  // 浅色主题
+    Dark = 2    // 深色主题
 }
 ```
 
@@ -100,23 +111,47 @@ public partial class App : Application
 
 ```xaml
 <markd:MarkdownViewer
-    Markdown="{Binding Content}"
-    Theme="{Binding Theme}"
+    Content="{Binding Content}"
+    Theme="Auto"
     EnableStreaming="True"
     StreamingThrottle="50"
     EnableSyntaxHighlighting="True"
-    FontSize="14"
-    FontFamily="Microsoft YaHei UI" />
+    FontSize="12"
+    FontFamily="Microsoft YaHei UI"
+    VerticalScrollBarVisibility="Auto"
+    HorizontalScrollBarVisibility="Auto" />
+```
+
+### 列表场景使用
+
+在 `ScrollViewer` 中使用多个 `MarkdownViewer`（如聊天消息列表）：
+
+```xaml
+<ScrollViewer VerticalScrollBarVisibility="Auto">
+    <ItemsControl ItemsSource="{Binding Messages}">
+        <ItemsControl.ItemTemplate>
+            <DataTemplate>
+                <Border Margin="10" Padding="15" Background="White">
+                    <markd:MarkdownViewer
+                        Content="{Binding Content}"
+                        VerticalScrollBarVisibility="Disabled"
+                        HorizontalScrollBarVisibility="Disabled" />
+                </Border>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+</ScrollViewer>
 ```
 
 ## 🎨 主题定制
 
 ### 方式 1：运行时自定义（推荐）
 
-在创建 MarkdownViewer 之前修改全局资源：
+在应用启动时加载主题并自定义颜色：
 
 ```csharp
-using MarkdView.Services.Theme;
+using MarkdView;
+using MarkdView.Enums;
 
 public partial class App : Application
 {
@@ -124,10 +159,10 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        // 先加载主题
+        // 应用主题
         ThemeManager.ApplyTheme(ThemeMode.Dark);
 
-        // 然后自定义特定颜色
+        // 自定义特定颜色
         Resources["Markdown.Heading.H1.Border"] = new SolidColorBrush(Color.FromRgb(0xFF, 0x69, 0xB4));
         Resources["Markdown.CodeBlock.Background"] = new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E));
     }
@@ -135,8 +170,6 @@ public partial class App : Application
 ```
 
 ### 方式 2：在 App.xaml 中覆盖
-
-如果使用手动初始化主题，也可以在 `App.xaml` 中覆盖特定颜色：
 
 ```xaml
 <Application.Resources>
@@ -151,14 +184,16 @@ public partial class App : Application
 ### 可用的主题资源键
 
 所有可自定义的主题资源键请参考：
-- 浅色主题：`MarkdView/Themes/Light.xaml`
-- 深色主题：`MarkdView/Themes/Dark.xaml`
+- 浅色主题：`MarkdView/Themes/MarkdView.Light.xaml`
+- 深色主题：`MarkdView/Themes/MarkdView.Dark.xaml`
 
 主要资源键包括：
 - `Markdown.Foreground` / `Markdown.Background` - 全局前景/背景色
 - `Markdown.Heading.H1.Foreground` / `Markdown.Heading.H1.Border` - 标题样式
 - `Markdown.Quote.Background` / `Markdown.Quote.Border` - 引用块样式
 - `Markdown.CodeBlock.Background` / `Markdown.CodeBlock.Foreground` - 代码块样式
+- `Markdown.CodeBlock.Header.Background` - 代码块头部（Mac 风格装饰）
+- `Markdown.CodeBlock.CopyButton.Background` / `Foreground` - 复制按钮样式
 - `Markdown.InlineCode.Background` / `Markdown.InlineCode.Foreground` - 行内代码样式
 - `Markdown.Link.Foreground` - 链接颜色
 
@@ -184,42 +219,74 @@ public partial class App : Application
 ### 语法高亮支持
 C#, JavaScript, TypeScript, Python, Java, C/C++, Go, Rust, SQL, Bash, HTML, CSS, JSON, XML 等
 
+## 📐 字体缩放系统
+
+所有文本元素基于 `FontSize` 属性成比例缩放：
+
+| 元素 | 缩放比例 | 示例（FontSize=12） |
+|------|---------|-------------------|
+| H1 标题 | 1.5× | 18px |
+| H2 标题 | 1.25× | 15px |
+| H3 标题 | 1.17× | 14px |
+| H4 标题 | 1.08× | 13px |
+| H5/H6 标题 | 1.0× | 12px |
+| 正文 | 1.0× | 12px |
+| 一级列表 | 1.08× | 13px |
+| 嵌套列表 | 0.96× | 11.5px |
+| 代码 | 0.92× | 11px |
+
+```xaml
+<!-- 全局调整字体大小 -->
+<markd:MarkdownViewer FontSize="14" Content="{Binding Content}" />
+```
+
 ## 🏗️ 项目结构
 
 ```
 MarkdView/
 ├── Controls/
-│   ├── MarkdownViewer.xaml(.cs)    # 主 Markdown 渲染控件
-│   └── CodeBlockControl.xaml(.cs)  # 代码块控件
+│   └── MarkdownViewer.xaml(.cs)    # 主 Markdown 渲染控件
 ├── Renderers/
 │   ├── MarkdownRenderer.cs         # Markdown 渲染器
-│   └── CodeBlockRenderer.cs        # 代码块渲染器
-├── Services/
-│   ├── Theme/
-│   │   ├── ThemeManager.cs         # 主题管理器（静态）
-│   │   └── ThemeMode.cs            # 主题模式枚举
-│   └── SyntaxHighlight/
-│       └── SyntaxHighlighter.cs    # 语法高亮服务
-├── Themes/
-│   ├── Light.xaml                  # 浅色主题资源字典
-│   └── Dark.xaml                   # 深色主题资源字典
-└── ViewModels/
-    └── MarkdownViewModel.cs        # Markdown ViewModel
+│   └── CodeBlockRenderer.cs        # 代码块渲染器（Mac 风格）
+├── Enums/
+│   └── ThemeMode.cs                # 主题模式枚举
+├── ThemeManager.cs                 # 静态主题管理器
+└── Themes/
+    ├── MarkdView.Light.xaml        # 浅色主题资源字典
+    └── MarkdView.Dark.xaml         # 深色主题资源字典
 ```
 
-## 📊 性能特点
+## 📊 性能与优化
 
-- 流式更新使用 50ms 防抖优化
-- 支持大文档渲染
-- 优化的 Markdown 解析和渲染性能
+### 流式渲染优化
+- **自适应防抖** - 根据文档大小动态调整防抖时间
+  - 0-2KB: 50ms
+  - 2KB-10KB: 50ms → 300ms
+  - 10KB-50KB: 300ms → 600ms
+  - 50KB+: 1000ms
+- **重入保护** - 防止渲染过程中的重复触发
+- **跳帧保护** - 最小渲染间隔 300ms，避免 UI 卡顿
+- **低优先级异步渲染** - 使用 `DispatcherPriority.Background` 保持 UI 响应
+
+### 列表场景优化
+- **智能滚动** - 禁用内部滚动条时自动适配高度
+- **事件冒泡** - 透明容器也能正确响应鼠标滚轮事件
+- **立即渲染** - 列表场景跳过流式防抖，直接渲染
+
+### 精细化排版
+- 标题层级分明（H1: 1.5×, H2: 1.25×, H3: 1.17×...）
+- 列表缩进合理（首级 20px，嵌套每级 +5px）
+- 列表标记大小适中（一级 1.08×，嵌套 0.96×）
+- 代码字体略小（0.92×）以提高密度
 
 ## 🛠️ 技术栈
 
 - **.NET 8.0** - 现代化的 .NET 平台
 - **WPF** - Windows Presentation Foundation
-- **Markdig** - 高性能 Markdown 解析器
-- **Emoji.Wpf** - 彩色 Emoji 支持
-- **CommunityToolkit.Mvvm** - MVVM 工具包
+- **Markdig 0.43.0** - 高性能 Markdown 解析器
+- **Emoji.Wpf 0.3.4** - 彩色 Emoji 支持
+- **CommunityToolkit.Mvvm** - MVVM 工具包（示例项目）
 
 ## 🤝 贡献
 
