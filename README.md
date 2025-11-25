@@ -168,6 +168,129 @@ public enum ThemeMode
     HorizontalScrollBarVisibility="Auto" />
 ```
 
+### 渲染完成事件
+
+`MarkdownViewer` 提供 `RenderCompleted` 事件，用于监控 Markdown 内容何时完成渲染。这在需要显示加载动画、统计渲染性能或协调多个控件时非常有用。
+
+#### 基础用法
+
+```xaml
+<markd:MarkdownViewer
+    Content="{Binding Content}"
+    RenderCompleted="OnMarkdownRenderCompleted" />
+```
+
+```csharp
+private void OnMarkdownRenderCompleted(object sender, EventArgs e)
+{
+    // Markdown 渲染完成，可以隐藏 loading 动画
+    LoadingIndicator.Visibility = Visibility.Collapsed;
+}
+```
+
+#### 高级用法：通过 Attached Behavior 监控多个实例
+
+在聊天应用等场景中，需要等待所有 AI 消息的 Markdown 都渲染完成后再显示内容：
+
+**1. 创建 Attached Behavior：**
+
+```csharp
+public static class MarkdownLoadedBehavior
+{
+    private static int _loadedCount = 0;
+    private static int _totalCount = 0;
+    private static Action? _onAllLoaded;
+
+    // 开始跟踪
+    public static void StartTracking(string sessionId, int totalCount, Action onAllLoaded)
+    {
+        _loadedCount = 0;
+        _totalCount = totalCount;
+        _onAllLoaded = onAllLoaded;
+    }
+
+    // Attached Property
+    public static readonly DependencyProperty IsTrackingEnabledProperty =
+        DependencyProperty.RegisterAttached(
+            "IsTrackingEnabled",
+            typeof(bool),
+            typeof(MarkdownLoadedBehavior),
+            new PropertyMetadata(false, OnIsTrackingEnabledChanged));
+
+    public static bool GetIsTrackingEnabled(DependencyObject obj)
+        => (bool)obj.GetValue(IsTrackingEnabledProperty);
+
+    public static void SetIsTrackingEnabled(DependencyObject obj, bool value)
+        => obj.SetValue(IsTrackingEnabledProperty, value);
+
+    private static void OnIsTrackingEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is MarkdownViewer markdownViewer && (bool)e.NewValue)
+        {
+            markdownViewer.RenderCompleted += OnMarkdownRenderCompleted;
+        }
+    }
+
+    private static void OnMarkdownRenderCompleted(object? sender, EventArgs e)
+    {
+        _loadedCount++;
+
+        if (_loadedCount >= _totalCount && _totalCount > 0)
+        {
+            _onAllLoaded?.Invoke();  // 所有渲染完成
+            _loadedCount = 0;
+            _totalCount = 0;
+            _onAllLoaded = null;
+        }
+    }
+}
+```
+
+**2. 在 XAML 中使用：**
+
+```xaml
+<ItemsControl ItemsSource="{Binding Messages}">
+    <ItemsControl.ItemTemplate>
+        <DataTemplate>
+            <markd:MarkdownViewer
+                behaviors:MarkdownLoadedBehavior.IsTrackingEnabled="True"
+                Content="{Binding Content}" />
+        </DataTemplate>
+    </ItemsControl.ItemTemplate>
+</ItemsControl>
+```
+
+**3. 在 ViewModel 中协调：**
+
+```csharp
+// 开始加载会话
+IsLoadingMessages = true;
+
+// 统计需要渲染的 Markdown 数量（例如：AI 消息数）
+var markdownCount = session.Messages.Count(m => m.IsAIMessage);
+
+// 开始跟踪渲染
+MarkdownLoadedBehavior.StartTracking(
+    sessionId,
+    markdownCount,
+    () =>
+    {
+        // 所有 Markdown 渲染完成后的回调
+        Dispatcher.Invoke(() => IsLoadingMessages = false);
+    }
+);
+```
+
+#### 事件触发时机
+
+`RenderCompleted` 事件在以下情况触发：
+- Markdown 文本解析完成
+- FlowDocument 构建完成
+- 所有代码块语法高亮完成
+- 文档配置和布局完成
+
+**注意**：事件在 `DispatcherPriority.Background` 优先级下触发，确保 UI 主线程不被阻塞。
+
 ### 列表场景使用
 
 在 `ScrollViewer` 中使用多个 `MarkdownViewer`（如聊天消息列表），需要禁用内部滚动条以实现流畅的外层滚动体验：

@@ -19,10 +19,8 @@ public class MarkdownViewer : ContentControl
 {
     static MarkdownViewer()
     {
-        Console.WriteLine($"[MarkdownViewer] Static constructor called");
         DefaultStyleKeyProperty.OverrideMetadata(typeof(MarkdownViewer),
             new FrameworkPropertyMetadata(typeof(MarkdownViewer)));
-        Console.WriteLine($"[MarkdownViewer] DefaultStyleKey set to: {typeof(MarkdownViewer)}");
 
         // 直接在代码中设置模板（作为后备方案）
         var factory = new FrameworkElementFactory(typeof(Border));
@@ -46,7 +44,6 @@ public class MarkdownViewer : ContentControl
         style.Setters.Add(new Setter(BackgroundProperty, System.Windows.Media.Brushes.Transparent));
 
         StyleProperty.OverrideMetadata(typeof(MarkdownViewer), new FrameworkPropertyMetadata(style));
-        Console.WriteLine($"[MarkdownViewer] Template set in code");
     }
 
     protected override void OnContentChanged(object oldContent, object newContent)
@@ -54,7 +51,6 @@ public class MarkdownViewer : ContentControl
         base.OnContentChanged(oldContent, newContent);
 
         var markdownText = newContent as string ?? string.Empty;
-        Console.WriteLine($"[MarkdownViewer] OnContentChanged: newText length={markdownText.Length}");
 
         // 保存待渲染的文本
         _lastRenderedText = markdownText;
@@ -62,7 +58,6 @@ public class MarkdownViewer : ContentControl
         // 如果MarkdownDocument还没初始化，等待OnApplyTemplate
         if (MarkdownDocument == null)
         {
-            Console.WriteLine($"[MarkdownViewer] OnContentChanged: MarkdownDocument is NULL, waiting");
             return;
         }
 
@@ -150,6 +145,11 @@ public class MarkdownViewer : ContentControl
 
     #region 公共属性
 
+    /// <summary>
+    /// 渲染完成事件 - 当 Markdown 渲染完成时触发
+    /// </summary>
+    public event EventHandler? RenderCompleted;
+
     public bool EnableStreaming
     {
         get => (bool)GetValue(EnableStreamingProperty);
@@ -231,7 +231,6 @@ public class MarkdownViewer : ContentControl
         get => _markdownDocument;
         set
         {
-            Console.WriteLine($"[MarkdownViewer] MarkdownDocument setter: old={_markdownDocument != null}, new={value != null}, Stack={Environment.StackTrace.Split('\n')[1].Trim()}");
             _markdownDocument = value;
         }
     }
@@ -249,7 +248,6 @@ public class MarkdownViewer : ContentControl
 
     public MarkdownViewer()
     {
-        Console.WriteLine($"[MarkdownViewer] Constructor START");
 
         // 配置 Markdig 管道
         _pipeline = new MarkdownPipelineBuilder()
@@ -285,20 +283,17 @@ public class MarkdownViewer : ContentControl
         this.PreviewMouseWheel += OnControlPreviewMouseWheel;
 
         // 主题会通过 OnThemeChanged 回调自动应用，这里不需要手动调用
-        Console.WriteLine($"[MarkdownViewer] Constructor END, Theme={Theme}");
     }
 
     public override void OnApplyTemplate()
     {
         base.OnApplyTemplate();
 
-        Console.WriteLine($"[MarkdownViewer] OnApplyTemplate START");
 
         // 从模板中获取 FlowDocumentScrollViewer
         if (GetTemplateChild("PART_MarkdownDocument") is FlowDocumentScrollViewer documentViewer)
         {
             MarkdownDocument = documentViewer;
-            Console.WriteLine($"[MarkdownViewer] OnApplyTemplate: MarkdownDocument found");
 
             // 处理滚轮事件冒泡
             MarkdownDocument.PreviewMouseWheel += OnPreviewMouseWheel;
@@ -317,10 +312,8 @@ public class MarkdownViewer : ContentControl
         }
         else
         {
-            Console.WriteLine($"[MarkdownViewer] OnApplyTemplate: MarkdownDocument NOT found");
         }
 
-        Console.WriteLine($"[MarkdownViewer] OnApplyTemplate END");
     }
 
     #endregion
@@ -355,18 +348,15 @@ public class MarkdownViewer : ContentControl
         if (d is MarkdownViewer viewer)
         {
             var newTheme = (ThemeMode)e.NewValue;
-            Console.WriteLine($"[MarkdownViewer] OnThemeChanged: {e.OldValue} -> {newTheme}");
 
             if (newTheme == ThemeMode.Auto)
             {
                 // Auto 模式：跟随全局主题
-                Console.WriteLine($"[MarkdownViewer] Theme=Auto, using ThemeManager.CurrentTheme={ThemeManager.CurrentTheme}");
                 ThemeManager.ApplyTheme(ThemeManager.CurrentTheme);
             }
             else
             {
                 // 显式设置主题：同步到全局并应用
-                Console.WriteLine($"[MarkdownViewer] Theme explicitly set to {newTheme}, syncing to ThemeManager");
                 ThemeManager.ApplyTheme(newTheme);
             }
         }
@@ -451,7 +441,6 @@ public class MarkdownViewer : ContentControl
                 _skipFrameCount++;
                 if (_skipFrameCount % 5 == 0)
                 {
-                    Console.WriteLine($"[MarkdownViewer] 跳帧保护: 已跳过 {_skipFrameCount} 帧，等待 {remainingDelay}ms");
                 }
                 return;
             }
@@ -459,7 +448,6 @@ public class MarkdownViewer : ContentControl
             // 重置跳帧计数
             if (_skipFrameCount > 0)
             {
-                Console.WriteLine($"[MarkdownViewer] 跳帧结束: 共跳过 {_skipFrameCount} 帧");
                 _skipFrameCount = 0;
             }
 
@@ -477,19 +465,16 @@ public class MarkdownViewer : ContentControl
         // 防止重入渲染（避免死锁和无限循环）
         if (_isRendering)
         {
-            Console.WriteLine($"[MarkdownViewer] RenderMarkdown SKIPPED: 渲染正在进行中，防止重入");
             return;
         }
 
         // 确保所有必需的服务和控件已初始化
         if (_renderingService == null || MarkdownDocument == null)
         {
-            Console.WriteLine($"[MarkdownViewer] RenderMarkdown SKIPPED: renderingService={_renderingService != null}, document={MarkdownDocument != null}");
             return;
         }
 
         _isRendering = true;
-        Console.WriteLine($"[MarkdownViewer] RenderMarkdown START: text length={_lastRenderedText.Length}");
 
         // 记录渲染开始时间
         var renderStartTime = DateTime.Now;
@@ -527,7 +512,6 @@ public class MarkdownViewer : ContentControl
                     enableHighlighting,
                     codeBlockRenderer);
 
-                Console.WriteLine($"[MarkdownViewer] FlowDocument created with {flowDocument.Blocks.Count} blocks");
 
                 // 设置Document
                 MarkdownDocument.Document = flowDocument;
@@ -538,11 +522,12 @@ public class MarkdownViewer : ContentControl
                 // 记录渲染完成时间
                 _lastRenderTime = renderStartTime;
                 var totalTime = (DateTime.Now - renderStartTime).TotalMilliseconds;
-                Console.WriteLine($"[MarkdownViewer] Render completed in {totalTime:F1}ms");
+
+                // 触发渲染完成事件
+                RenderCompleted?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[MarkdownViewer] Render ERROR: {ex.Message}");
                 ShowErrorDocument(ex.Message);
             }
             finally
@@ -558,7 +543,6 @@ public class MarkdownViewer : ContentControl
 
         try
         {
-            Console.WriteLine($"[MarkdownViewer] ShowErrorDocument: {errorMessage}");
 
             // 渲染错误时显示错误信息
             var errorDocument = new FlowDocument();
@@ -576,7 +560,6 @@ public class MarkdownViewer : ContentControl
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[MarkdownViewer] ShowErrorDocument ERROR: {ex.Message}");
         }
     }
 
@@ -610,12 +593,10 @@ public class MarkdownViewer : ContentControl
     /// </summary>
     private void OnThemeApplied(object? sender, EventArgs e)
     {
-        Console.WriteLine($"[MarkdownViewer] OnThemeApplied: Theme={Theme}, ThemeManager.CurrentTheme={ThemeManager.CurrentTheme}");
 
         // 如果控件设置为 Auto 模式，需要重新渲染以应用新的全局主题
         if (Theme == ThemeMode.Auto)
         {
-            Console.WriteLine($"[MarkdownViewer] Theme=Auto, re-rendering with global theme");
         }
 
         // 无论哪种模式，都需要重新渲染以更新主题相关的样式
@@ -627,18 +608,15 @@ public class MarkdownViewer : ContentControl
     /// </summary>
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        Console.WriteLine($"[MarkdownViewer] OnDataContextChanged: DataContext={DataContext != null}");
 
         // 延迟一点等待绑定完成
         Dispatcher.InvokeAsync(() =>
         {
             var contentText = Content as string ?? string.Empty;
-            Console.WriteLine($"[MarkdownViewer] OnDataContextChanged (delayed): Markdown length={contentText.Length}");
 
             // 如果Content有值但还没渲染，强制渲染
             if (!string.IsNullOrEmpty(contentText) && MarkdownDocument?.Document == null)
             {
-                Console.WriteLine($"[MarkdownViewer] OnDataContextChanged: Forcing render");
                 _lastRenderedText = contentText;
                 RenderMarkdown();
             }
@@ -657,7 +635,6 @@ public class MarkdownViewer : ContentControl
         // 如果有Content内容但还没渲染，强制渲染
         if (!string.IsNullOrEmpty(contentText) && MarkdownDocument?.Document == null)
         {
-            Console.WriteLine($"[MarkdownViewer] OnLayoutUpdated: Detected Markdown length={contentText.Length}, forcing render");
             _hasCheckedBindingAfterLoad = true;
             _lastRenderedText = contentText;
             RenderMarkdown();
@@ -670,20 +647,17 @@ public class MarkdownViewer : ContentControl
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         var contentText = Content as string ?? string.Empty;
-        Console.WriteLine($"[MarkdownViewer] OnLoaded: Markdown length={contentText.Length}, _lastRenderedText length={_lastRenderedText.Length}, Document={MarkdownDocument?.Document != null}");
 
         // 查找并缓存父级 ScrollViewer
         if (!_hasSearchedForParent)
         {
             _cachedParentScrollViewer = FindParentScrollViewer(this);
             _hasSearchedForParent = true;
-            Console.WriteLine($"[MarkdownViewer] OnLoaded: Parent ScrollViewer found={_cachedParentScrollViewer != null}");
         }
 
         // 如果有待渲染的文本但还没有文档，立即渲染
         if (!string.IsNullOrEmpty(_lastRenderedText) && MarkdownDocument?.Document == null)
         {
-            Console.WriteLine($"[MarkdownViewer] OnLoaded: Forcing immediate render for text length={_lastRenderedText.Length}");
             RenderMarkdown();
         }
         // 确保在列表场景下内容已正确渲染
