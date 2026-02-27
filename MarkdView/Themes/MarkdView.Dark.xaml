@@ -7,7 +7,7 @@
     <SolidColorBrush x:Key="Markdown.Foreground" Color="#E6E9EF" /> <!-- RGB(230,233,239) -->
     <SolidColorBrush x:Key="Markdown.Background" Color="#1A1B1D" /> <!-- RGB(26,27,29) -->
     <SolidColorBrush x:Key="Markdown.Bold.Foreground" Color="#4C63EB" /> <!-- RGB(76,99,235) -->
-    <Thickness x:Key="Markdown.PagePadding">4,6,4,8</Thickness>
+    <Thickness x:Key="Markdown.PagePadding">18,14,18,16</Thickness>
     <Thickness x:Key="Markdown.Heading.BorderThickness">0,0,0,1</Thickness>
 
     <!-- 标题 -->

@@ -57,7 +57,7 @@ public class CodeBlockRenderer
         {
             ClipToBounds = true
         };
-        containerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(36) }); // 标题栏
+        containerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(35) }); // 标题栏
         containerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });     // 代码内容
 
         // 创建标题栏
@@ -178,14 +178,17 @@ public class CodeBlockRenderer
     {
         var copyButton = new Button
         {
-            Content = "复制",
+            Content = "⧉",
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 12, 0),
-            Padding = new Thickness(10, 2, 10, 2),
-            BorderThickness = new Thickness(1),
-            FontSize = _baseFontSize * 0.88,
-            FontWeight = FontWeights.Medium,
+            Margin = new Thickness(0, 0, 10, 0),
+            Padding = new Thickness(0),
+            Width = 24,
+            Height = 24,
+            BorderThickness = new Thickness(0),
+            FontSize = _baseFontSize * 1.0,
+            FontWeight = FontWeights.SemiBold,
+            Opacity = 0.96,
             Cursor = Cursors.Hand,
             Tag = code,
             Template = CreateCopyButtonTemplate()
@@ -194,13 +197,13 @@ public class CodeBlockRenderer
         // 使用动态资源绑定按钮颜色
         SetDynamicResource(copyButton, Button.BackgroundProperty,
             "Markdown.CodeBlock.CopyButton.Background",
-            new SolidColorBrush(Color.FromRgb(0x3C, 0x40, 0x48)));
+            Brushes.Transparent);
         SetDynamicResource(copyButton, Button.ForegroundProperty,
             "Markdown.CodeBlock.CopyButton.Foreground",
             new SolidColorBrush(Color.FromRgb(0xAB, 0xB2, 0xBF)));
         SetDynamicResource(copyButton, Button.BorderBrushProperty,
             "Markdown.CodeBlock.CopyButton.Border",
-            new SolidColorBrush(Color.FromRgb(0x52, 0x57, 0x60)));
+            Brushes.Transparent);
 
         // 复制按钮点击事件
         copyButton.Click += (s, e) =>
@@ -210,20 +213,20 @@ public class CodeBlockRenderer
                 try
                 {
                     Clipboard.SetText(codeText);
-                    btn.Content = "已复制!";
+                    btn.Content = "✓";
 
                     // 2秒后恢复按钮文本
                     var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
                     timer.Tick += (ts, te) =>
                     {
-                        btn.Content = "复制";
+                        btn.Content = "⧉";
                         timer.Stop();
                     };
                     timer.Start();
                 }
                 catch
                 {
-                    btn.Content = "复制失败";
+                    btn.Content = "✕";
                 }
             }
         };
@@ -245,6 +248,7 @@ public class CodeBlockRenderer
         factory.SetValue(Border.BorderThicknessProperty, new TemplateBindingExtension(Button.BorderThicknessProperty));
         factory.SetValue(Border.PaddingProperty, new TemplateBindingExtension(Button.PaddingProperty));
         factory.SetValue(Border.CornerRadiusProperty, new CornerRadius(4));
+        factory.SetValue(Border.SnapsToDevicePixelsProperty, true);
 
         var contentPresenter = new FrameworkElementFactory(typeof(ContentPresenter));
         contentPresenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
@@ -259,11 +263,13 @@ public class CodeBlockRenderer
             GetBrushResource("Markdown.CodeBlock.CopyButton.HoverBackground", Color.FromRgb(0x4C, 0x50, 0x58))));
         trigger.Setters.Add(new Setter(Button.BorderBrushProperty,
             GetBrushResource("Markdown.CodeBlock.CopyButton.HoverBorder", Color.FromRgb(0x6A, 0x70, 0x7B))));
+        trigger.Setters.Add(new Setter(Button.OpacityProperty, 1.0));
         template.Triggers.Add(trigger);
 
         var pressedTrigger = new Trigger { Property = Button.IsPressedProperty, Value = true };
         pressedTrigger.Setters.Add(new Setter(Button.BackgroundProperty,
             GetBrushResource("Markdown.CodeBlock.CopyButton.PressedBackground", Color.FromRgb(0x36, 0x3A, 0x43))));
+        pressedTrigger.Setters.Add(new Setter(Button.OpacityProperty, 0.92));
         template.Triggers.Add(pressedTrigger);
 
         return template;
