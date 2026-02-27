@@ -6,7 +6,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using MarkdView.Services;
-using MarkdView;
 using MarkdView.Enums;
 
 namespace MarkdView.Renderers;
@@ -34,13 +33,16 @@ public class CodeBlockRenderer
     {
         var codeContainer = new Grid
         {
-            Margin = new Thickness(0, 16, 0, 16)
+            Margin = new Thickness(0, 18, 0, 18),
+            SnapsToDevicePixels = true
         };
 
         var mainBorder = new Border
         {
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8)
+            CornerRadius = new CornerRadius(10),
+            SnapsToDevicePixels = true,
+            ClipToBounds = true
         };
 
         // 使用动态资源绑定，支持主题切换
@@ -51,14 +53,17 @@ public class CodeBlockRenderer
             "Markdown.CodeBlock.Border",
             new SolidColorBrush(Color.FromRgb(0x21, 0x25, 0x2B)));
 
-        var containerGrid = new Grid();
-        containerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(40) }); // 标题栏
+        var containerGrid = new Grid
+        {
+            ClipToBounds = true
+        };
+        containerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(36) }); // 标题栏
         containerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });     // 代码内容
 
         // 创建标题栏
-        var headerGrid = CreateHeader(code, language);
-        Grid.SetRow(headerGrid, 0);
-        containerGrid.Children.Add(headerGrid);
+        var headerBorder = CreateHeader(code, language);
+        Grid.SetRow(headerBorder, 0);
+        containerGrid.Children.Add(headerBorder);
 
         // 创建代码内容区域
         var codeScrollViewer = CreateCodeContent(code, language);
@@ -74,12 +79,19 @@ public class CodeBlockRenderer
     /// <summary>
     /// 创建代码块标题栏
     /// </summary>
-    private Grid CreateHeader(string code, string? language)
+    private Border CreateHeader(string code, string? language)
     {
         var headerGrid = new Grid();
+        var headerBorder = new Border
+        {
+            CornerRadius = new CornerRadius(10, 10, 0, 0),
+            SnapsToDevicePixels = true,
+            ClipToBounds = true,
+            Child = headerGrid
+        };
 
         // 使用动态资源绑定标题栏背景色
-        SetDynamicResource(headerGrid, Grid.BackgroundProperty,
+        SetDynamicResource(headerBorder, Border.BackgroundProperty,
             "Markdown.CodeBlock.Header.Background",
             new SolidColorBrush(Color.FromRgb(0x21, 0x25, 0x2B)));
 
@@ -90,10 +102,13 @@ public class CodeBlockRenderer
         // 中间：语言标签
         if (!string.IsNullOrEmpty(language))
         {
+            var displayLanguage = NormalizeLanguage(language);
             var langLabel = new TextBlock
             {
-                Text = language,
-                FontSize = _baseFontSize * 1.0,  // 基于基础字体大小
+                Text = displayLanguage,
+                FontSize = _baseFontSize * 0.9,
+                FontWeight = FontWeights.Medium,
+                Opacity = 0.9,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -110,7 +125,7 @@ public class CodeBlockRenderer
         var copyButton = CreateCopyButton(code);
         headerGrid.Children.Add(copyButton);
 
-        return headerGrid;
+        return headerBorder;
     }
 
     /// <summary>
@@ -123,32 +138,33 @@ public class CodeBlockRenderer
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(12, 0, 0, 0)
+            Margin = new Thickness(12, 0, 0, 0),
+            Opacity = 0.92
         };
 
         // 红色圆点
         dotsPanel.Children.Add(new System.Windows.Shapes.Ellipse
         {
-            Width = 12,
-            Height = 12,
+            Width = 10,
+            Height = 10,
             Fill = new SolidColorBrush(Color.FromRgb(0xFF, 0x5F, 0x56)),
-            Margin = new Thickness(0, 0, 8, 0)
+            Margin = new Thickness(0, 0, 6, 0)
         });
 
         // 黄色圆点
         dotsPanel.Children.Add(new System.Windows.Shapes.Ellipse
         {
-            Width = 12,
-            Height = 12,
+            Width = 10,
+            Height = 10,
             Fill = new SolidColorBrush(Color.FromRgb(0xFF, 0xBD, 0x2E)),
-            Margin = new Thickness(0, 0, 8, 0)
+            Margin = new Thickness(0, 0, 6, 0)
         });
 
         // 绿色圆点
         dotsPanel.Children.Add(new System.Windows.Shapes.Ellipse
         {
-            Width = 12,
-            Height = 12,
+            Width = 10,
+            Height = 10,
             Fill = new SolidColorBrush(Color.FromRgb(0x27, 0xC9, 0x3F))
         });
 
@@ -166,9 +182,10 @@ public class CodeBlockRenderer
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 12, 0),
-            Padding = new Thickness(12, 4, 12, 4),
-            BorderThickness = new Thickness(0),
-            FontSize = _baseFontSize * 1.0,  // 基于基础字体大小
+            Padding = new Thickness(10, 2, 10, 2),
+            BorderThickness = new Thickness(1),
+            FontSize = _baseFontSize * 0.88,
+            FontWeight = FontWeights.Medium,
             Cursor = Cursors.Hand,
             Tag = code,
             Template = CreateCopyButtonTemplate()
@@ -181,6 +198,9 @@ public class CodeBlockRenderer
         SetDynamicResource(copyButton, Button.ForegroundProperty,
             "Markdown.CodeBlock.CopyButton.Foreground",
             new SolidColorBrush(Color.FromRgb(0xAB, 0xB2, 0xBF)));
+        SetDynamicResource(copyButton, Button.BorderBrushProperty,
+            "Markdown.CodeBlock.CopyButton.Border",
+            new SolidColorBrush(Color.FromRgb(0x52, 0x57, 0x60)));
 
         // 复制按钮点击事件
         copyButton.Click += (s, e) =>
@@ -236,8 +256,15 @@ public class CodeBlockRenderer
         // 添加鼠标悬停效果
         var trigger = new Trigger { Property = Button.IsMouseOverProperty, Value = true };
         trigger.Setters.Add(new Setter(Button.BackgroundProperty,
-            new SolidColorBrush(Color.FromRgb(0x4C, 0x50, 0x58))));
+            GetBrushResource("Markdown.CodeBlock.CopyButton.HoverBackground", Color.FromRgb(0x4C, 0x50, 0x58))));
+        trigger.Setters.Add(new Setter(Button.BorderBrushProperty,
+            GetBrushResource("Markdown.CodeBlock.CopyButton.HoverBorder", Color.FromRgb(0x6A, 0x70, 0x7B))));
         template.Triggers.Add(trigger);
+
+        var pressedTrigger = new Trigger { Property = Button.IsPressedProperty, Value = true };
+        pressedTrigger.Setters.Add(new Setter(Button.BackgroundProperty,
+            GetBrushResource("Markdown.CodeBlock.CopyButton.PressedBackground", Color.FromRgb(0x36, 0x3A, 0x43))));
+        template.Triggers.Add(pressedTrigger);
 
         return template;
     }
@@ -321,8 +348,8 @@ public class CodeBlockRenderer
         // 启用语法高亮
         if (_enableSyntaxHighlighting)
         {
-            // 获取当前主题
-            SyntaxHighlighter.ApplyHighlighting(codeTextBlock, code, language, ThemeManager.GetCurrentTheme() == ThemeMode.Light);
+            var isLightTheme = _themeMode == ThemeMode.Light;
+            SyntaxHighlighter.ApplyHighlighting(codeTextBlock, code, language, isLightTheme);
         }
         else
         {
@@ -337,21 +364,39 @@ public class CodeBlockRenderer
         return codeScrollViewer;
     }
 
+    private static string NormalizeLanguage(string language)
+    {
+        var parts = language.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0)
+        {
+            return "CODE";
+        }
+
+        return parts[0].Trim().ToUpperInvariant();
+    }
+
     /// <summary>
     /// 设置动态资源引用
     /// </summary>
     private void SetDynamicResource(FrameworkElement element, DependencyProperty property, string resourceKey, object defaultValue)
     {
-        // 使用 TryFindResource 查找资源（会在整个资源树包括 MergedDictionaries 中查找）
         var resource = Application.Current?.TryFindResource(resourceKey);
-
-        // 只有在整个资源树中都找不到时才添加默认值
-        if (resource == null && Application.Current != null)
+        if (resource != null)
         {
-            Application.Current.Resources[resourceKey] = defaultValue;
+            element.SetResourceReference(property, resourceKey);
+            return;
         }
 
-        // 建立动态绑定
-        element.SetResourceReference(property, resourceKey);
+        element.SetValue(property, defaultValue);
+    }
+
+    private static Brush GetBrushResource(string resourceKey, Color defaultColor)
+    {
+        if (Application.Current?.TryFindResource(resourceKey) is Brush brush)
+        {
+            return brush;
+        }
+
+        return new SolidColorBrush(defaultColor);
     }
 }

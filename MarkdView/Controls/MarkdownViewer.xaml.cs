@@ -80,6 +80,8 @@ public class MarkdownViewer : ContentControl
         else
         {
             // 立即渲染
+            _pendingText = markdownText;
+            _hasPendingUpdate = true;
             RenderMarkdown();
         }
     }
@@ -220,6 +222,7 @@ public class MarkdownViewer : ContentControl
     private const int MinRenderIntervalMs = 300; // 最小渲染间隔 300ms（防止卡顿）
     private int _skipFrameCount = 0; // 跳帧计数器
     private bool _isRendering = false; // 防止重入渲染标志
+    private bool _isThemeAppliedSubscribed; // 防止重复订阅静态主题事件
 
     // 服务
     private readonly MarkdownRenderer _renderingService;
@@ -277,10 +280,11 @@ public class MarkdownViewer : ContentControl
         this.LayoutUpdated += OnLayoutUpdated;
 
         // 订阅主题应用完成事件
-        ThemeManager.ThemeApplied += OnThemeApplied;
+        SubscribeThemeAppliedEvent();
 
         // 在 MarkdownViewer 级别处理鼠标滚轮事件，确保即使外部容器透明也能工作
         this.PreviewMouseWheel += OnControlPreviewMouseWheel;
+        this.Unloaded += OnUnloaded;
 
         // 主题会通过 OnThemeChanged 回调自动应用，这里不需要手动调用
     }
@@ -293,6 +297,11 @@ public class MarkdownViewer : ContentControl
         // 从模板中获取 FlowDocumentScrollViewer
         if (GetTemplateChild("PART_MarkdownDocument") is FlowDocumentScrollViewer documentViewer)
         {
+            if (MarkdownDocument != null)
+            {
+                MarkdownDocument.PreviewMouseWheel -= OnPreviewMouseWheel;
+            }
+
             MarkdownDocument = documentViewer;
 
             // 处理滚轮事件冒泡
@@ -306,7 +315,8 @@ public class MarkdownViewer : ContentControl
             var contentText = Content as string ?? string.Empty;
             if (!string.IsNullOrEmpty(contentText))
             {
-                _lastRenderedText = contentText;
+                _pendingText = contentText;
+                _hasPendingUpdate = true;
                 RenderMarkdown();
             }
         }
@@ -451,8 +461,6 @@ public class MarkdownViewer : ContentControl
                 _skipFrameCount = 0;
             }
 
-            _lastRenderedText = _pendingText;
-            _hasPendingUpdate = false;
             RenderMarkdown();
         }
     }
@@ -462,17 +470,21 @@ public class MarkdownViewer : ContentControl
     /// </summary>
     private void RenderMarkdown()
     {
-        // 防止重入渲染（避免死锁和无限循环）
-        if (_isRendering)
-        {
-            return;
-        }
-
         // 确保所有必需的服务和控件已初始化
         if (_renderingService == null || MarkdownDocument == null)
         {
             return;
         }
+
+        // 防止重入渲染：保留 pending 状态，等待当前渲染结束后继续
+        if (_isRendering)
+        {
+            return;
+        }
+
+        var textToRender = _hasPendingUpdate ? _pendingText : _lastRenderedText;
+        _hasPendingUpdate = false;
+        _lastRenderedText = textToRender;
 
         _isRendering = true;
 
@@ -480,7 +492,6 @@ public class MarkdownViewer : ContentControl
         var renderStartTime = DateTime.Now;
 
         // 捕获需要的变量（避免闭包问题）
-        var textToRender = _lastRenderedText;
         var fontFamily = FontFamily;
         var fontSize = FontSize;
         var enableHighlighting = EnableSyntaxHighlighting;
@@ -533,6 +544,12 @@ public class MarkdownViewer : ContentControl
             finally
             {
                 _isRendering = false;
+
+                // 渲染期间若有新内容到达，继续消费 pending 队列
+                if (_hasPendingUpdate && !string.Equals(_pendingText, textToRender, StringComparison.Ordinal))
+                {
+                    Dispatcher.InvokeAsync(RenderMarkdown, DispatcherPriority.Background);
+                }
             }
         }, System.Windows.Threading.DispatcherPriority.Background); // 使用 Background 优先级，保持 UI 响应
     }
@@ -560,6 +577,7 @@ public class MarkdownViewer : ContentControl
         }
         catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[MarkdownViewer] ShowErrorDocument failed: {ex}");
         }
     }
 
@@ -617,7 +635,8 @@ public class MarkdownViewer : ContentControl
             // 如果Content有值但还没渲染，强制渲染
             if (!string.IsNullOrEmpty(contentText) && MarkdownDocument?.Document == null)
             {
-                _lastRenderedText = contentText;
+                _pendingText = contentText;
+                _hasPendingUpdate = true;
                 RenderMarkdown();
             }
         }, System.Windows.Threading.DispatcherPriority.Loaded);
@@ -636,7 +655,8 @@ public class MarkdownViewer : ContentControl
         if (!string.IsNullOrEmpty(contentText) && MarkdownDocument?.Document == null)
         {
             _hasCheckedBindingAfterLoad = true;
-            _lastRenderedText = contentText;
+            _pendingText = contentText;
+            _hasPendingUpdate = true;
             RenderMarkdown();
         }
     }
@@ -646,6 +666,8 @@ public class MarkdownViewer : ContentControl
     /// </summary>
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        SubscribeThemeAppliedEvent();
+
         var contentText = Content as string ?? string.Empty;
 
         // 查找并缓存父级 ScrollViewer
@@ -669,6 +691,12 @@ public class MarkdownViewer : ContentControl
                 ConfigureFlowDocument(MarkdownDocument.Document);
             }
         }
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        _updateTimer.Stop();
+        UnsubscribeThemeAppliedEvent();
     }
 
     /// <summary>
@@ -708,6 +736,28 @@ public class MarkdownViewer : ContentControl
     {
         // 这个方法现在主要由 OnControlPreviewMouseWheel 处理
         // 保留此方法是为了向后兼容，避免移除后可能的问题
+    }
+
+    private void SubscribeThemeAppliedEvent()
+    {
+        if (_isThemeAppliedSubscribed)
+        {
+            return;
+        }
+
+        ThemeManager.ThemeApplied += OnThemeApplied;
+        _isThemeAppliedSubscribed = true;
+    }
+
+    private void UnsubscribeThemeAppliedEvent()
+    {
+        if (!_isThemeAppliedSubscribed)
+        {
+            return;
+        }
+
+        ThemeManager.ThemeApplied -= OnThemeApplied;
+        _isThemeAppliedSubscribed = false;
     }
 
     /// <summary>

@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -9,14 +7,18 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using Markdig;
+using Markdig.Extensions.Tables;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
-using MarkdView.Services;
 using Emoji.Wpf;
 using WpfBlock = System.Windows.Documents.Block;
 using WpfInline = System.Windows.Documents.Inline;
 using MarkdigBlock = Markdig.Syntax.Block;
 using MarkdigInline = Markdig.Syntax.Inlines.Inline;
+using MarkdigTable = Markdig.Extensions.Tables.Table;
+using MarkdigTableCell = Markdig.Extensions.Tables.TableCell;
+using MarkdigTableRow = Markdig.Extensions.Tables.TableRow;
+using MarkdigTableColumnAlign = Markdig.Extensions.Tables.TableColumnAlign;
 
 namespace MarkdView.Renderers;
 
@@ -28,6 +30,12 @@ public class MarkdownRenderer
     private readonly MarkdownPipeline _pipeline;
     private double _baseFontSize;
     private FontFamily _fontFamily;
+    private static readonly HashSet<string> SafeExternalSchemes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        Uri.UriSchemeHttp,
+        Uri.UriSchemeHttps,
+        Uri.UriSchemeMailto
+    };
 
     public MarkdownRenderer(MarkdownPipeline pipeline)
     {
@@ -58,8 +66,8 @@ public class MarkdownRenderer
         {
             FontFamily = fontFamily,
             FontSize = fontSize,
-            LineHeight = GetDouble("Markdown.LineHeight", 1.6) * fontSize,
-            PagePadding = new Thickness(0)
+            LineHeight = GetDouble("Markdown.LineHeight", 1.68) * fontSize,
+            PagePadding = GetThickness("Markdown.PagePadding", new Thickness(2, 4, 2, 4))
         };
 
         // 使用动态资源绑定 FlowDocument 的前景色和背景色（默认深色主题）
@@ -97,6 +105,7 @@ public class MarkdownRenderer
             ParagraphBlock paragraph => ConvertParagraph(paragraph),
             QuoteBlock quote => ConvertQuote(quote, enableSyntaxHighlighting, codeBlockRenderer),
             ListBlock list => ConvertList(list, enableSyntaxHighlighting, codeBlockRenderer, listLevel),
+            MarkdigTable table => ConvertTable(table, enableSyntaxHighlighting, codeBlockRenderer),
             CodeBlock code => ConvertCodeBlock(code, codeBlockRenderer),
             ThematicBreakBlock => ConvertThematicBreak(),
             _ => null
@@ -108,13 +117,18 @@ public class MarkdownRenderer
     /// </summary>
     private WpfBlock ConvertHeading(HeadingBlock heading)
     {
+        var level = heading.Level;
         var paragraph = new Paragraph
         {
-            Margin = new Thickness(0, 10, 0, 10)
+            Margin = level switch
+            {
+                1 => new Thickness(0, 24, 0, 14),
+                2 => new Thickness(0, 20, 0, 12),
+                3 => new Thickness(0, 16, 0, 10),
+                _ => new Thickness(0, 12, 0, 8)
+            }
         };
 
-        // 根据标题级别应用样式
-        var level = heading.Level;
         var levelKey = $"H{level}";
 
         // H3 使用 H2 的样式
@@ -124,22 +138,28 @@ public class MarkdownRenderer
         // 比例系数：H1=1.5, H2=1.25, H3=1.17, H4=1.08, H5=1.0, H6=1.0
         var sizeRatio = level switch
         {
-            1 => 1.5,
-            2 => 1.25,
-            3 => 1.17,
-            4 => 1.08,
-            5 => 1.0,
-            6 => 1.0,
-            _ => 1.08
+            1 => 1.75,
+            2 => 1.42,
+            3 => 1.24,
+            4 => 1.12,
+            5 => 1.02,
+            6 => 0.96,
+            _ => 1.12
         };
         paragraph.FontSize = _baseFontSize * sizeRatio;
+        paragraph.LineHeight = paragraph.FontSize * 1.24;
 
         // 使用动态资源绑定标题前景色（H3 使用 H2 的颜色，默认深色主题）
         SetDynamicResource(paragraph, Paragraph.ForegroundProperty,
             $"Markdown.Heading.{styleKey}.Foreground",
             new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0)));
 
-        paragraph.FontWeight = level <= 3 ? FontWeights.Bold : FontWeights.SemiBold;
+        paragraph.FontWeight = level switch
+        {
+            <= 2 => FontWeights.Bold,
+            3 => FontWeights.SemiBold,
+            _ => FontWeights.Medium
+        };
 
         // H1, H2 和 H3 添加底部边框
         if (level <= 3)
@@ -147,9 +167,9 @@ public class MarkdownRenderer
             // 使用动态资源绑定边框颜色（H3 使用 H2 的边框颜色，默认深色主题）
             SetDynamicResource(paragraph, Paragraph.BorderBrushProperty,
                 $"Markdown.Heading.{styleKey}.Border",
-                new SolidColorBrush(Color.FromRgb(0x56, 0x9C, 0xD6)));
+                new SolidColorBrush(Color.FromRgb(0x4C, 0x63, 0xEB)));
             paragraph.BorderThickness = GetThickness("Markdown.Heading.BorderThickness", new Thickness(0, 0, 0, 1));
-            paragraph.Padding = new Thickness(0, 0, 0, 8);
+            paragraph.Padding = new Thickness(0, 0, 0, level == 1 ? 10 : 8);
         }
 
         // 转换内联内容
@@ -173,7 +193,7 @@ public class MarkdownRenderer
     {
         var wpfParagraph = new Paragraph
         {
-            Margin = new Thickness(0, 8, 0, 8),
+            Margin = new Thickness(0, 6, 0, 10),
             TextAlignment = TextAlignment.Left
         };
 
@@ -197,9 +217,9 @@ public class MarkdownRenderer
     {
         var section = new Section
         {
-            BorderThickness = GetThickness("Markdown.Quote.BorderThickness", new Thickness(4, 0, 0, 0)),
-            Padding = GetThickness("Markdown.Quote.Padding", new Thickness(16, 12, 16, 12)),
-            Margin = new Thickness(0, 16, 0, 16)
+            BorderThickness = GetThickness("Markdown.Quote.BorderThickness", new Thickness(3, 0, 0, 0)),
+            Padding = GetThickness("Markdown.Quote.Padding", new Thickness(14, 10, 14, 10)),
+            Margin = new Thickness(0, 14, 0, 16)
         };
 
         // 使用动态资源绑定引用块的背景和边框颜色（默认深色主题）
@@ -208,7 +228,10 @@ public class MarkdownRenderer
             new SolidColorBrush(Color.FromRgb(0x2D, 0x2D, 0x2D)));
         SetDynamicResource(section, Section.BorderBrushProperty,
             "Markdown.Quote.Border",
-            new SolidColorBrush(Color.FromRgb(0x56, 0x9C, 0xD6)));
+            new SolidColorBrush(Color.FromRgb(0x4C, 0x63, 0xEB)));
+        SetDynamicResource(section, Section.ForegroundProperty,
+            "Markdown.Quote.Foreground",
+            new SolidColorBrush(Color.FromRgb(0xD0, 0xD0, 0xD0)));
 
         // 递归转换子块
         foreach (var block in quote)
@@ -230,28 +253,39 @@ public class MarkdownRenderer
 
         if (wpfList is List listElement)
         {
-            // 计算左侧填充：一级列表留出标记空间，嵌套列表每层增加少量缩进
-            var leftPadding = listLevel == 0 ? 20 : (20 + listLevel * 5);
-            listElement.Margin = new Thickness(0, 8, 0, 8);
+            // 调整列表缩进：有序/无序分别处理，避免有序列表序号与正文间距异常
+            var leftPadding = list.IsOrdered
+                ? (listLevel == 0 ? 20 : 16 + (listLevel - 1) * 8)
+                : (listLevel == 0 ? 20 : 12 + (listLevel - 1) * 8);
+            listElement.Margin = new Thickness(0, 6, 0, 10);
             listElement.Padding = new Thickness(leftPadding, 0, 0, 0);
 
-            // 先设置标记样式（在设置其他属性之前）
-            // 一级列表：有序=数字，无序=实心圆点
-            // 嵌套列表：统一使用空心圆圈
-            if (listLevel == 0)
+            if (list.IsOrdered)
             {
-                listElement.MarkerStyle = list.IsOrdered ? TextMarkerStyle.Decimal : TextMarkerStyle.Disc;
-                // 一级列表标记稍大一些（原点更明显），基于基础字体大小的 1.08 倍
-                listElement.FontSize = _baseFontSize * 1.08;
+                listElement.MarkerStyle = TextMarkerStyle.Decimal;
+                listElement.FontSize = _baseFontSize * 0.94;
             }
             else
             {
-                listElement.MarkerStyle = TextMarkerStyle.Circle;  // 嵌套列表统一用空心圆圈
-                // 嵌套列表标记稍小一些（空心圆圈不会太大），基于基础字体大小的 0.96 倍
-                listElement.FontSize = _baseFontSize * 0.96;
+                // 无序列表按层级区分标记样式和尺寸，避免二级圆圈过大
+                listElement.MarkerStyle = listLevel switch
+                {
+                    0 => TextMarkerStyle.Disc,
+                    1 => TextMarkerStyle.Circle,
+                    _ => TextMarkerStyle.Square
+                };
+
+                var markerScale = listLevel switch
+                {
+                    0 => 1.0,
+                    1 => 0.45,
+                    _ => 0.74
+                };
+                listElement.FontSize = _baseFontSize * markerScale;
             }
 
-            listElement.MarkerOffset = 0;   // 标记紧贴文字
+            // 控制 marker 偏移，避免有序列表“编号和内容空格太大”
+            listElement.MarkerOffset = listLevel == 0 ? 2 : 3;
             listElement.StartIndex = 1;     // 有序列表起始序号
 
             // 不设置 Foreground，让标记继承 FlowDocument 的前景色
@@ -262,7 +296,7 @@ public class MarkdownRenderer
                 {
                     var listItemElement = new ListItem
                     {
-                        Margin = new Thickness(0, 4, 0, 4),  // 列表项之间的间距
+                        Margin = new Thickness(0, 2, 0, 6),  // 列表项之间的间距
                         Padding = new Thickness(0, 0, 0, 0)
                     };
 
@@ -276,6 +310,8 @@ public class MarkdownRenderer
                             if (element is Paragraph para)
                             {
                                 para.Margin = new Thickness(0, 0, 0, 0);
+                                para.FontSize = _baseFontSize;
+                                para.LineHeight = _baseFontSize * GetDouble("Markdown.LineHeight", 1.68);
                             }
                             listItemElement.Blocks.Add(element);
                         }
@@ -322,13 +358,187 @@ public class MarkdownRenderer
     }
 
     /// <summary>
+    /// 转换表格
+    /// </summary>
+    private WpfBlock ConvertTable(MarkdigTable table, bool enableSyntaxHighlighting, CodeBlockRenderer? codeBlockRenderer)
+    {
+        var wpfTable = new System.Windows.Documents.Table
+        {
+            CellSpacing = 0,
+            Margin = new Thickness(0, 12, 0, 14),
+            BorderThickness = new Thickness(1)
+        };
+
+        SetDynamicResource(wpfTable, System.Windows.Documents.Table.BorderBrushProperty,
+            "Markdown.Table.Border",
+            new SolidColorBrush(Color.FromRgb(0xD5, 0xDE, 0xE9)));
+        SetDynamicResource(wpfTable, System.Windows.Documents.Table.BackgroundProperty,
+            "Markdown.Table.Background",
+            Brushes.Transparent);
+
+        var columnCount = GetTableColumnCount(table);
+        for (var i = 0; i < columnCount; i++)
+        {
+            wpfTable.Columns.Add(new TableColumn());
+        }
+
+        var rowGroup = new TableRowGroup();
+        foreach (var rowBlock in table)
+        {
+            if (rowBlock is not MarkdigTableRow row)
+            {
+                continue;
+            }
+
+            var wpfRow = new System.Windows.Documents.TableRow();
+            foreach (var cellBlock in row)
+            {
+                if (cellBlock is not MarkdigTableCell cell)
+                {
+                    continue;
+                }
+
+                var wpfCell = new System.Windows.Documents.TableCell
+                {
+                    Padding = new Thickness(10, 6, 10, 6),
+                    BorderThickness = new Thickness(0, 0, 1, 1),
+                    TextAlignment = GetTableTextAlignment(table, cell.ColumnIndex)
+                };
+
+                SetDynamicResource(wpfCell, System.Windows.Documents.TableCell.BorderBrushProperty,
+                    "Markdown.Table.Border",
+                    new SolidColorBrush(Color.FromRgb(0xD5, 0xDE, 0xE9)));
+                SetDynamicResource(wpfCell, System.Windows.Documents.TableCell.ForegroundProperty,
+                    "Markdown.Foreground",
+                    new SolidColorBrush(Color.FromRgb(0x1F, 0x29, 0x37)));
+
+                if (row.IsHeader)
+                {
+                    SetDynamicResource(wpfCell, System.Windows.Documents.TableCell.BackgroundProperty,
+                        "Markdown.Table.Header.Background",
+                        new SolidColorBrush(Color.FromRgb(0xE8, 0xEE, 0xF6)));
+                    SetDynamicResource(wpfCell, System.Windows.Documents.TableCell.ForegroundProperty,
+                        "Markdown.Table.Header.Foreground",
+                        new SolidColorBrush(Color.FromRgb(0x1F, 0x29, 0x37)));
+                    wpfCell.FontWeight = FontWeights.SemiBold;
+                }
+                else
+                {
+                    SetDynamicResource(wpfCell, System.Windows.Documents.TableCell.BackgroundProperty,
+                        "Markdown.Table.Row.Background",
+                        new SolidColorBrush(Color.FromRgb(0xF8, 0xFA, 0xFC)));
+                }
+
+                if (cell.ColumnSpan > 1)
+                {
+                    wpfCell.ColumnSpan = cell.ColumnSpan;
+                }
+
+                if (cell.RowSpan > 1)
+                {
+                    wpfCell.RowSpan = cell.RowSpan;
+                }
+
+                var hasContent = false;
+                foreach (var cellChild in cell)
+                {
+                    var converted = ConvertBlock(cellChild, enableSyntaxHighlighting, codeBlockRenderer);
+                    if (converted == null)
+                    {
+                        continue;
+                    }
+
+                    if (converted is Paragraph paragraph)
+                    {
+                        paragraph.Margin = new Thickness(0);
+                        paragraph.LineHeight = _baseFontSize * GetDouble("Markdown.LineHeight", 1.68);
+                    }
+
+                    wpfCell.Blocks.Add(converted);
+                    hasContent = true;
+                }
+
+                if (!hasContent)
+                {
+                    wpfCell.Blocks.Add(new Paragraph(new Run(string.Empty)) { Margin = new Thickness(0) });
+                }
+
+                wpfRow.Cells.Add(wpfCell);
+            }
+
+            if (wpfRow.Cells.Count > 0)
+            {
+                rowGroup.Rows.Add(wpfRow);
+            }
+        }
+
+        if (rowGroup.Rows.Count > 0)
+        {
+            wpfTable.RowGroups.Add(rowGroup);
+        }
+
+        return wpfTable;
+    }
+
+    private static int GetTableColumnCount(MarkdigTable table)
+    {
+        if (table.ColumnDefinitions != null && table.ColumnDefinitions.Count > 0)
+        {
+            return table.ColumnDefinitions.Count;
+        }
+
+        var maxColumns = 0;
+        foreach (var rowBlock in table)
+        {
+            if (rowBlock is not MarkdigTableRow row)
+            {
+                continue;
+            }
+
+            var rowColumns = 0;
+            foreach (var cellBlock in row)
+            {
+                if (cellBlock is MarkdigTableCell cell)
+                {
+                    rowColumns += Math.Max(1, cell.ColumnSpan);
+                }
+            }
+
+            maxColumns = Math.Max(maxColumns, rowColumns);
+        }
+
+        return Math.Max(1, maxColumns);
+    }
+
+    private static TextAlignment GetTableTextAlignment(MarkdigTable table, int columnIndex)
+    {
+        if (table.ColumnDefinitions == null || columnIndex < 0 || columnIndex >= table.ColumnDefinitions.Count)
+        {
+            return TextAlignment.Left;
+        }
+
+        var alignment = table.ColumnDefinitions[columnIndex].Alignment;
+        if (!alignment.HasValue)
+        {
+            return TextAlignment.Left;
+        }
+
+        return alignment.Value switch
+        {
+            MarkdigTableColumnAlign.Center => TextAlignment.Center,
+            MarkdigTableColumnAlign.Right => TextAlignment.Right,
+            _ => TextAlignment.Left
+        };
+    }
+
+    /// <summary>
     /// 转换水平分隔线
     /// </summary>
     private WpfBlock ConvertThematicBreak()
     {
         var paragraph = new Paragraph
         {
-            Margin = GetThickness("Markdown.HorizontalRule.Margin", new Thickness(0, 8, 0, 8)),
+            Margin = GetThickness("Markdown.HorizontalRule.Margin", new Thickness(0, 18, 0, 18)),
             BorderBrush = GetBrush("Markdown.HorizontalRule.Border", Color.FromRgb(0xE0, 0xE0, 0xE0)),
             BorderThickness = GetThickness("Markdown.HorizontalRule.BorderThickness", new Thickness(0, 1, 0, 0)),
             Padding = new Thickness(0)
@@ -377,7 +587,7 @@ public class MarkdownRenderer
         if (emphasis.DelimiterCount == 2)
         {
             span.FontWeight = FontWeights.Bold;
-            span.Foreground = GetBrush("Markdown.Bold.Foreground", Color.FromRgb(0x5C, 0x9D, 0xFF));
+            span.Foreground = GetBrush("Markdown.Bold.Foreground", Color.FromRgb(0x4C, 0x63, 0xEB));
         }
         // 斜体 (*)
         else if (emphasis.DelimiterCount == 1)
@@ -401,24 +611,51 @@ public class MarkdownRenderer
     /// </summary>
     private WpfInline ConvertInlineCode(CodeInline code)
     {
-        var span = new Span
+        var inlineFontSize = _baseFontSize * 0.88;
+        var codeText = new System.Windows.Controls.TextBlock
         {
+            Text = code.Content,
             FontFamily = GetFontFamily("Markdown.CodeFontFamily", "Consolas, Monaco, Courier New, monospace"),
-            // 行内代码字体大小基于基础字体大小的 0.92 倍
-            FontSize = _baseFontSize * 0.92
+            FontSize = inlineFontSize,
+            VerticalAlignment = VerticalAlignment.Center,
+            LineHeight = inlineFontSize * 1.18,
+            LineStackingStrategy = LineStackingStrategy.BlockLineHeight
         };
 
-        // 使用动态资源绑定内联代码的背景和前景色（默认深色主题）
-        SetDynamicResource(span, Span.BackgroundProperty,
-            "Markdown.InlineCode.Background",
-            new SolidColorBrush(Color.FromRgb(0x3E, 0x3E, 0x3E)));
-        SetDynamicResource(span, Span.ForegroundProperty,
+        SetDynamicResource(codeText, System.Windows.Controls.TextBlock.ForegroundProperty,
             "Markdown.InlineCode.Foreground",
             new SolidColorBrush(Color.FromRgb(0xF9, 0x82, 0x66)));
 
-        // 使用空格模拟 padding
-        span.Inlines.Add(new Run(" " + code.Content + " "));
-        return span;
+        var textHost = new Grid
+        {
+            MinHeight = Math.Ceiling(inlineFontSize * 1.5),
+            VerticalAlignment = VerticalAlignment.Center,
+            SnapsToDevicePixels = true
+        };
+        textHost.Children.Add(codeText);
+
+        var border = new Border
+        {
+            Child = textHost,
+            Padding = new Thickness(6, 0, 6, 0),
+            CornerRadius = GetCornerRadius("Markdown.InlineCode.CornerRadius", new CornerRadius(4)),
+            BorderThickness = GetThickness("Markdown.InlineCode.BorderThickness", new Thickness(1)),
+            SnapsToDevicePixels = true,
+            UseLayoutRounding = true
+        };
+
+        // 使用动态资源绑定内联代码的背景和前景色（默认深色主题）
+        SetDynamicResource(border, Border.BackgroundProperty,
+            "Markdown.InlineCode.Background",
+            new SolidColorBrush(Color.FromRgb(0x3E, 0x3E, 0x3E)));
+        SetDynamicResource(border, Border.BorderBrushProperty,
+            "Markdown.InlineCode.Border",
+            new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55)));
+
+        return new InlineUIContainer(border)
+        {
+            BaselineAlignment = BaselineAlignment.Center
+        };
     }
 
     /// <summary>
@@ -432,19 +669,32 @@ public class MarkdownRenderer
             return ConvertImage(link);
         }
 
+        if (!TryCreateSafeNavigateUri(link.Url, out var safeUri))
+        {
+            var fallbackSpan = new Span();
+            AppendInlineChildren(link, fallbackSpan.Inlines);
+            return fallbackSpan;
+        }
+
         var hyperlink = new Hyperlink
         {
-            NavigateUri = link.Url != null ? new Uri(link.Url, UriKind.RelativeOrAbsolute) : null,
-            TextDecorations = TextDecorations.Underline
+            NavigateUri = safeUri,
+            TextDecorations = null,
+            FontWeight = FontWeights.SemiBold
         };
 
         // 使用动态资源绑定链接颜色（默认深色主题）
         SetDynamicResource(hyperlink, Hyperlink.ForegroundProperty,
             "Markdown.Link.Foreground",
-            new SolidColorBrush(Color.FromRgb(0x56, 0x9C, 0xD6)));
+            new SolidColorBrush(Color.FromRgb(0x4C, 0x63, 0xEB)));
 
         hyperlink.RequestNavigate += (s, e) =>
         {
+            if (e.Uri == null || !SafeExternalSchemes.Contains(e.Uri.Scheme))
+            {
+                return;
+            }
+
             try
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
@@ -457,17 +707,48 @@ public class MarkdownRenderer
         };
 
         // 转换链接文本
-        if (link.FirstChild != null)
-        {
-            foreach (var child in link)
-            {
-                var childElement = ConvertInline(child);
-                if (childElement != null)
-                    hyperlink.Inlines.Add(childElement);
-            }
-        }
+        AppendInlineChildren(link, hyperlink.Inlines);
 
         return hyperlink;
+    }
+
+    internal static bool TryCreateSafeNavigateUri(string? url, out Uri? uri)
+    {
+        uri = null;
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return false;
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var candidate))
+        {
+            return false;
+        }
+
+        if (!SafeExternalSchemes.Contains(candidate.Scheme))
+        {
+            return false;
+        }
+
+        uri = candidate;
+        return true;
+    }
+
+    private void AppendInlineChildren(ContainerInline source, InlineCollection target)
+    {
+        if (source.FirstChild == null)
+        {
+            return;
+        }
+
+        foreach (var child in source)
+        {
+            var childElement = ConvertInline(child);
+            if (childElement != null)
+            {
+                target.Add(childElement);
+            }
+        }
     }
 
     /// <summary>
@@ -563,17 +844,14 @@ public class MarkdownRenderer
     /// </summary>
     private void SetDynamicResource(FrameworkContentElement element, DependencyProperty property, string resourceKey, object defaultValue)
     {
-        // 使用 TryFindResource 查找资源（会在整个资源树包括 MergedDictionaries 中查找）
         var resource = Application.Current?.TryFindResource(resourceKey);
-
-        // 只有在整个资源树中都找不到时才添加默认值
-        if (resource == null && Application.Current != null)
+        if (resource != null)
         {
-            Application.Current.Resources[resourceKey] = defaultValue;
+            element.SetResourceReference(property, resourceKey);
+            return;
         }
 
-        // 建立动态绑定
-        element.SetResourceReference(property, resourceKey);
+        element.SetValue(property, defaultValue);
     }
 
     /// <summary>
@@ -581,17 +859,29 @@ public class MarkdownRenderer
     /// </summary>
     private void SetDynamicResource(System.Windows.Documents.TextElement element, DependencyProperty property, string resourceKey, object defaultValue)
     {
-        // 使用 TryFindResource 查找资源（会在整个资源树包括 MergedDictionaries 中查找）
         var resource = Application.Current?.TryFindResource(resourceKey);
-
-        // 只有在整个资源树中都找不到时才添加默认值
-        if (resource == null && Application.Current != null)
+        if (resource != null)
         {
-            Application.Current.Resources[resourceKey] = defaultValue;
+            element.SetResourceReference(property, resourceKey);
+            return;
         }
 
-        // 建立动态绑定
-        element.SetResourceReference(property, resourceKey);
+        element.SetValue(property, defaultValue);
+    }
+
+    /// <summary>
+    /// 设置动态资源引用（用于 FrameworkElement）
+    /// </summary>
+    private void SetDynamicResource(FrameworkElement element, DependencyProperty property, string resourceKey, object defaultValue)
+    {
+        var resource = Application.Current?.TryFindResource(resourceKey);
+        if (resource != null)
+        {
+            element.SetResourceReference(property, resourceKey);
+            return;
+        }
+
+        element.SetValue(property, defaultValue);
     }
 
     private Brush GetBrush(string key, Color defaultColor)

@@ -51,7 +51,13 @@ public static class ThemeManager
     /// </summary>
     public static ThemeMode GetCurrentTheme()
     {
-        var existingTheme = Application.Current.Resources.MergedDictionaries
+        var app = Application.Current;
+        if (app == null)
+        {
+            return CurrentTheme;
+        }
+
+        var existingTheme = app.Resources.MergedDictionaries
             .FirstOrDefault(d => d.Source != null &&
                 (d.Source.ToString().Contains("MarkdView.Light.xaml") ||
                  d.Source.ToString().Contains("MarkdView.Dark.xaml")));
@@ -97,6 +103,12 @@ public static class ThemeManager
     /// </summary>
     private static void ApplyThemeFromUri(string themeUri)
     {
+        var app = Application.Current;
+        if (app == null)
+        {
+            return;
+        }
+
         try
         {
             var uri = new Uri(themeUri, UriKind.Absolute);
@@ -106,7 +118,7 @@ public static class ThemeManager
             RemoveExistingTheme();
 
             // 添加新的主题资源字典
-            Application.Current.Resources.MergedDictionaries.Add(newTheme);
+            app.Resources.MergedDictionaries.Add(newTheme);
 
             // 触发主题应用完成事件
             ThemeApplied?.Invoke(null, EventArgs.Empty);
@@ -123,14 +135,20 @@ public static class ThemeManager
     /// </summary>
     private static void RemoveExistingTheme()
     {
-        var existingTheme = Application.Current.Resources.MergedDictionaries
+        var app = Application.Current;
+        if (app == null)
+        {
+            return;
+        }
+
+        var existingTheme = app.Resources.MergedDictionaries
             .FirstOrDefault(d => d.Source != null &&
                 (d.Source.ToString().Contains("MarkdView.Light.xaml") ||
                  d.Source.ToString().Contains("MarkdView.Dark.xaml")));
 
         if (existingTheme != null)
         {
-            Application.Current.Resources.MergedDictionaries.Remove(existingTheme);
+            app.Resources.MergedDictionaries.Remove(existingTheme);
         }
     }
 }
