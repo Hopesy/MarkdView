@@ -76,10 +76,13 @@ public class MarkdownRenderer
         SetDynamicResource(flowDocument, FlowDocument.BackgroundProperty, "Markdown.Background",
             new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E)));
 
+        var effectiveCodeBlockRenderer = codeBlockRenderer
+            ?? new CodeBlockRenderer(enableSyntaxHighlighting, baseFontSize: fontSize);
+
         // 遍历所有块级元素
         foreach (var block in document)
         {
-            var element = ConvertBlock(block, enableSyntaxHighlighting, codeBlockRenderer);
+            var element = ConvertBlock(block, enableSyntaxHighlighting, effectiveCodeBlockRenderer);
             if (element != null)
             {
                 flowDocument.Blocks.Add(element);
@@ -97,7 +100,7 @@ public class MarkdownRenderer
     /// <summary>
     /// 将 Markdig Block 转换为 WPF Block
     /// </summary>
-    private WpfBlock? ConvertBlock(MarkdigBlock block, bool enableSyntaxHighlighting, CodeBlockRenderer? codeBlockRenderer, int listLevel = 0)
+    private WpfBlock? ConvertBlock(MarkdigBlock block, bool enableSyntaxHighlighting, CodeBlockRenderer codeBlockRenderer, int listLevel = 0)
     {
         return block switch
         {
@@ -213,7 +216,7 @@ public class MarkdownRenderer
     /// <summary>
     /// 转换引用块
     /// </summary>
-    private WpfBlock ConvertQuote(QuoteBlock quote, bool enableSyntaxHighlighting, CodeBlockRenderer? codeBlockRenderer)
+    private WpfBlock ConvertQuote(QuoteBlock quote, bool enableSyntaxHighlighting, CodeBlockRenderer codeBlockRenderer)
     {
         var section = new Section
         {
@@ -247,7 +250,7 @@ public class MarkdownRenderer
     /// <summary>
     /// 转换列表块
     /// </summary>
-    private WpfBlock ConvertList(ListBlock list, bool enableSyntaxHighlighting, CodeBlockRenderer? codeBlockRenderer, int listLevel = 0)
+    private WpfBlock ConvertList(ListBlock list, bool enableSyntaxHighlighting, CodeBlockRenderer codeBlockRenderer, int listLevel = 0)
     {
         var wpfList = list.IsOrdered ? (WpfBlock)new List() : new List();
 
@@ -328,39 +331,20 @@ public class MarkdownRenderer
     /// <summary>
     /// 转换代码块
     /// </summary>
-    private WpfBlock ConvertCodeBlock(CodeBlock codeBlock, CodeBlockRenderer? codeBlockRenderer)
+    private WpfBlock ConvertCodeBlock(CodeBlock codeBlock, CodeBlockRenderer codeBlockRenderer)
     {
         // 获取代码内容和语言
         var code = codeBlock is FencedCodeBlock fenced ? fenced.Lines.ToString() :
                    codeBlock is CodeBlock cb ? cb.Lines.ToString() : string.Empty;
         var language = codeBlock is FencedCodeBlock fencedCode ? fencedCode.Info : string.Empty;
 
-        // 使用代码块渲染器（如果提供）
-        if (codeBlockRenderer != null)
-        {
-            return codeBlockRenderer.Render(code, language);
-        }
-
-        // 默认简单渲染
-        var paragraph = new Paragraph
-        {
-            Margin = new Thickness(0, 8, 0, 8),
-            Background = GetBrush("Markdown.CodeBlock.Background", Color.FromRgb(0x28, 0x2C, 0x34)),
-            Foreground = GetBrush("Markdown.CodeBlock.Foreground", Color.FromRgb(0xAB, 0xB2, 0xBF)),
-            FontFamily = GetFontFamily("Markdown.CodeFontFamily", "Consolas, Monaco, Courier New, monospace"),
-            // 代码块字体大小基于基础字体大小的 0.92 倍
-            FontSize = _baseFontSize * 0.92,
-            Padding = new Thickness(12)
-        };
-
-        paragraph.Inlines.Add(new Run(code));
-        return paragraph;
+        return codeBlockRenderer.Render(code, language);
     }
 
     /// <summary>
     /// 转换表格
     /// </summary>
-    private WpfBlock ConvertTable(MarkdigTable table, bool enableSyntaxHighlighting, CodeBlockRenderer? codeBlockRenderer)
+    private WpfBlock ConvertTable(MarkdigTable table, bool enableSyntaxHighlighting, CodeBlockRenderer codeBlockRenderer)
     {
         var wpfTable = new System.Windows.Documents.Table
         {

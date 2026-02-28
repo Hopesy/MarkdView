@@ -1,5 +1,4 @@
 <Solution>
   <Project Path="Samples/Samples.csproj" />
   <Project Path="MarkdView/MarkdView.csproj" />
-  <Project Path="MarkdView.Tests/MarkdView.Tests.csproj" />
 </Solution>
