@@ -52,7 +52,8 @@ public class MarkdownRenderer
         FontFamily fontFamily,
         double fontSize,
         bool enableSyntaxHighlighting,
-        CodeBlockRenderer? codeBlockRenderer = null)
+        CodeBlockRenderer? codeBlockRenderer = null,
+        bool useTransparentCanvas = false)
     {
         // 保存基础字体设置，供子元素使用
         _baseFontSize = fontSize;
@@ -73,8 +74,15 @@ public class MarkdownRenderer
         // 使用动态资源绑定 FlowDocument 的前景色和背景色（默认深色主题）
         SetDynamicResource(flowDocument, FlowDocument.ForegroundProperty, "Markdown.Foreground",
             new SolidColorBrush(Color.FromRgb(0xCC, 0xCC, 0xCC)));
-        SetDynamicResource(flowDocument, FlowDocument.BackgroundProperty, "Markdown.Background",
-            new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E)));
+        if (useTransparentCanvas)
+        {
+            flowDocument.Background = Brushes.Transparent;
+        }
+        else
+        {
+            SetDynamicResource(flowDocument, FlowDocument.BackgroundProperty, "Markdown.Background",
+                new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E)));
+        }
 
         var effectiveCodeBlockRenderer = codeBlockRenderer
             ?? new CodeBlockRenderer(enableSyntaxHighlighting, baseFontSize: fontSize);

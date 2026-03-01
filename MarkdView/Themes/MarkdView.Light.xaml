@@ -1,38 +1,31 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-
     <!-- ==================== 浅色主题 ==================== -->
-
     <!-- 基础颜色 -->
     <SolidColorBrush x:Key="Markdown.Foreground" Color="#1F2937" />
     <SolidColorBrush x:Key="Markdown.Background" Color="#F8FAFC" />
     <SolidColorBrush x:Key="Markdown.Bold.Foreground" Color="#4C63EB" />
     <Thickness x:Key="Markdown.PagePadding">18,14,18,16</Thickness>
     <Thickness x:Key="Markdown.Heading.BorderThickness">0,0,0,1</Thickness>
-
     <!-- 标题 -->
     <SolidColorBrush x:Key="Markdown.Heading.H1.Foreground" Color="#0F172A" />
     <SolidColorBrush x:Key="Markdown.Heading.H1.Border" Color="#4C63EB" />
     <SolidColorBrush x:Key="Markdown.Heading.H2.Foreground" Color="#1E293B" />
     <SolidColorBrush x:Key="Markdown.Heading.H2.Border" Color="#D5DEE9" />
-
     <!-- 引用块 -->
     <SolidColorBrush x:Key="Markdown.Quote.Background" Color="#F1F5F9" />
     <SolidColorBrush x:Key="Markdown.Quote.Border" Color="#4C63EB" />
     <SolidColorBrush x:Key="Markdown.Quote.Foreground" Color="#334155" />
     <Thickness x:Key="Markdown.Quote.BorderThickness">3,0,0,0</Thickness>
     <Thickness x:Key="Markdown.Quote.Padding">14,10,14,10</Thickness>
-
     <!-- 内联代码 -->
     <SolidColorBrush x:Key="Markdown.InlineCode.Background" Color="#E2E8F0" />
     <SolidColorBrush x:Key="Markdown.InlineCode.Foreground" Color="#C2410C" />
     <SolidColorBrush x:Key="Markdown.InlineCode.Border" Color="#CBD5E1" />
     <Thickness x:Key="Markdown.InlineCode.BorderThickness">1</Thickness>
     <CornerRadius x:Key="Markdown.InlineCode.CornerRadius">4</CornerRadius>
-
     <!-- 链接 -->
     <SolidColorBrush x:Key="Markdown.Link.Foreground" Color="#4C63EB" />
-
     <!-- 代码块 -->
     <SolidColorBrush x:Key="Markdown.CodeBlock.Background" Color="#F1F5F9" />
     <SolidColorBrush x:Key="Markdown.CodeBlock.Border" Color="#D5DEE9" />
@@ -45,7 +38,19 @@
     <SolidColorBrush x:Key="Markdown.CodeBlock.CopyButton.HoverBorder" Color="#AAB8CC" />
     <SolidColorBrush x:Key="Markdown.CodeBlock.CopyButton.PressedBackground" Color="#CDD8E8" />
     <SolidColorBrush x:Key="Markdown.CodeBlock.Foreground" Color="#1F2937" />
-
+    <!-- 语法高亮 -->
+    <SolidColorBrush x:Key="Markdown.Syntax.Default" Color="#2C2C2C" />
+    <SolidColorBrush x:Key="Markdown.Syntax.Comment" Color="#008000" />
+    <SolidColorBrush x:Key="Markdown.Syntax.String" Color="#A31515" />
+    <SolidColorBrush x:Key="Markdown.Syntax.Attribute" Color="#795E26" />
+    <SolidColorBrush x:Key="Markdown.Syntax.ControlKeyword" Color="#AF00DB" />
+    <SolidColorBrush x:Key="Markdown.Syntax.DeclarationKeyword" Color="#0000FF" />
+    <SolidColorBrush x:Key="Markdown.Syntax.TypeKeyword" Color="#267F99" />
+    <SolidColorBrush x:Key="Markdown.Syntax.Literal" Color="#098558" />
+    <SolidColorBrush x:Key="Markdown.Syntax.Type" Color="#267F99" />
+    <SolidColorBrush x:Key="Markdown.Syntax.Function" Color="#795E26" />
+    <SolidColorBrush x:Key="Markdown.Syntax.Number" Color="#098558" />
+    <SolidColorBrush x:Key="Markdown.Syntax.ShellCommand" Color="#AF00DB" />
     <!-- 其他 -->
     <SolidColorBrush x:Key="Markdown.Table.Background" Color="Transparent" />
     <SolidColorBrush x:Key="Markdown.Table.Border" Color="#D5DEE9" />
@@ -60,5 +65,4 @@
     <Thickness x:Key="Markdown.Image.BorderThickness">1</Thickness>
     <CornerRadius x:Key="Markdown.Image.CornerRadius">8</CornerRadius>
     <FontFamily x:Key="Markdown.CodeFontFamily">Cascadia Code,Consolas,Segoe UI Mono</FontFamily>
-
 </ResourceDictionary>

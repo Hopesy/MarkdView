@@ -7,7 +7,7 @@
     <UseWPF>true</UseWPF>
     <!-- NuGet 包信息 -->
     <PackageId>MarkdView</PackageId>
-    <Version>1.0.10</Version>
+    <Version>1.0.11</Version>
     <Authors>Hopesy</Authors>
     <Company>MinoChat</Company>
     <Product>MarkdView</Product>
@@ -19,7 +19,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <PackageReleaseNotes>v1.0.10: 调整渲染页面内部留白；优化代码块复制按钮为纯图标样式；修正标题栏高度与无背景图标交互；持续改进深浅主题视觉一致性。</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.0.11: 新增 UseTransparentCanvas 透明画布开关；语法高亮配色改为 Markdown.Syntax.* 动态资源并支持主题切换自动刷新；README 聚焦使用方式并补充字体/字号与高亮配置说明。</PackageReleaseNotes>
     <PackageIcon>icon.png</PackageIcon>
   </PropertyGroup>
   <!-- 包含外层README 和 LICENSE 到 NuGet 包 -->

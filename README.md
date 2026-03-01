@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/download)
-[![Version](https://img.shields.io/badge/Version-1.0.10-green.svg)](https://github.com/hopesy/MarkdView)
+[![Version](https://img.shields.io/badge/Version-1.0.11-green.svg)](https://github.com/hopesy/MarkdView)
 
 > 现代化 WPF Markdown 渲染控件，支持流式渲染、语法高亮和智能主题管理。
 
@@ -145,13 +145,7 @@ public enum ThemeMode
 }
 ```
 
-#### 主题同步机制
-
-无论使用哪种模式，`ThemeManager.CurrentTheme` 始终反映当前实际使用的主题：
-- **模式 1**：`ThemeManager.ApplyTheme()` 更新全局主题 → 所有 `Theme="Auto"` 的控件自动跟随
-- **模式 2**：控件 `Theme` 属性改变 → 更新控件主题并同步到 `ThemeManager.CurrentTheme`
-
-这种设计确保了无论通过哪种方式改变主题，所有控件都能保持同步。
+主题同步机制与设计细节见 [Guid.md](Guid.md)。
 
 ### 完整配置
 
@@ -162,10 +156,82 @@ public enum ThemeMode
     EnableStreaming="True"
     StreamingThrottle="50"
     EnableSyntaxHighlighting="True"
+    UseTransparentCanvas="False"
     FontSize="12"
     FontFamily="Microsoft YaHei UI"
     VerticalScrollBarVisibility="Auto"
     HorizontalScrollBarVisibility="Auto" />
+```
+
+### 字体与字号设置
+
+`MarkdownViewer` 支持直接设置 `FontFamily` 和 `FontSize`，也支持数据绑定。
+
+```xaml
+<!-- 固定字体和字号 -->
+<markd:MarkdownViewer
+    Content="{Binding Content}"
+    FontFamily="Microsoft YaHei UI"
+    FontSize="14" />
+```
+
+```xaml
+<!-- 绑定到 ViewModel -->
+<markd:MarkdownViewer
+    Content="{Binding Content}"
+    FontFamily="{Binding MarkdownFontFamily}"
+    FontSize="{Binding MarkdownFontSize}" />
+```
+
+说明：
+- 修改 `FontFamily` / `FontSize` 后会立即重渲染并生效
+- `FontSize` 会按比例影响正文、标题、列表和代码块
+
+### 透明画布开关
+
+`MarkdownViewer` 提供 `UseTransparentCanvas` 属性，用于控制渲染画布是否透明：
+
+- `False`（默认）：使用主题资源 `Markdown.Background`，保证主题一致性和可读性
+- `True`：将 `FlowDocument` 背景设为透明，适合嵌入已有卡片背景的场景
+
+```xaml
+<!-- 默认行为：使用主题背景 -->
+<markd:MarkdownViewer Content="{Binding Content}" UseTransparentCanvas="False" />
+
+<!-- 透明画布：继承父容器视觉背景 -->
+<markd:MarkdownViewer Content="{Binding Content}" UseTransparentCanvas="True" />
+```
+
+### 语法高亮开关
+
+`EnableSyntaxHighlighting` 用于控制代码块是否启用语法高亮：
+
+- `True`（默认）：代码块按语法类型着色
+- `False`：代码块以普通文本颜色显示
+
+```xaml
+<!-- 启用语法高亮（默认） -->
+<markd:MarkdownViewer Content="{Binding Content}" EnableSyntaxHighlighting="True" />
+
+<!-- 关闭语法高亮 -->
+<markd:MarkdownViewer Content="{Binding Content}" EnableSyntaxHighlighting="False" />
+```
+
+### 语法高亮配色（动态资源）
+
+代码块语法色使用动态资源键 `Markdown.Syntax.*`。主题切换时会自动刷新，不需要手动重新创建控件。
+
+你可以在 `App.xaml` 或运行时覆盖这些键：
+
+```xaml
+<Application.Resources>
+    <!-- 常用语法色覆盖示例 -->
+    <SolidColorBrush x:Key="Markdown.Syntax.Default" Color="#1F2937" />
+    <SolidColorBrush x:Key="Markdown.Syntax.Comment" Color="#6B7280" />
+    <SolidColorBrush x:Key="Markdown.Syntax.String" Color="#B45309" />
+    <SolidColorBrush x:Key="Markdown.Syntax.ControlKeyword" Color="#7C3AED" />
+    <SolidColorBrush x:Key="Markdown.Syntax.Function" Color="#2563EB" />
+</Application.Resources>
 ```
 
 ### 渲染完成事件
@@ -370,21 +436,7 @@ public partial class App : Application
 </Application.Resources>
 ```
 
-### 可用的主题资源键
-
-所有可自定义的主题资源键请参考：
-- 浅色主题：`MarkdView/Themes/MarkdView.Light.xaml`
-- 深色主题：`MarkdView/Themes/MarkdView.Dark.xaml`
-
-主要资源键包括：
-- `Markdown.Foreground` / `Markdown.Background` - 全局前景/背景色
-- `Markdown.Heading.H1.Foreground` / `Markdown.Heading.H1.Border` - 标题样式
-- `Markdown.Quote.Background` / `Markdown.Quote.Border` - 引用块样式
-- `Markdown.CodeBlock.Background` / `Markdown.CodeBlock.Foreground` - 代码块样式
-- `Markdown.CodeBlock.Header.Background` - 代码块头部（Mac 风格装饰）
-- `Markdown.CodeBlock.CopyButton.Background` / `Foreground` - 复制按钮样式
-- `Markdown.InlineCode.Background` / `Markdown.InlineCode.Foreground` - 行内代码样式
-- `Markdown.Link.Foreground` - 链接颜色
+可用主题资源键与颜色控制范围见 [Guid.md](Guid.md)。
 
 ## 📝 支持的 Markdown 特性
 
@@ -429,45 +481,7 @@ C#, JavaScript, TypeScript, Python, Java, C/C++, Go, Rust, SQL, Bash, HTML, CSS,
 <markd:MarkdownViewer FontSize="14" Content="{Binding Content}" />
 ```
 
-## 🏗️ 项目结构
-
-```
-MarkdView/
-├── Controls/
-│   └── MarkdownViewer.xaml(.cs)    # 主 Markdown 渲染控件
-├── Renderers/
-│   ├── MarkdownRenderer.cs         # Markdown 渲染器
-│   └── CodeBlockRenderer.cs        # 代码块渲染器（Mac 风格）
-├── Enums/
-│   └── ThemeMode.cs                # 主题模式枚举
-├── ThemeManager.cs                 # 静态主题管理器
-└── Themes/
-    ├── MarkdView.Light.xaml        # 浅色主题资源字典
-    └── MarkdView.Dark.xaml         # 深色主题资源字典
-```
-
-## 📊 性能与优化
-
-### 流式渲染优化
-- **自适应防抖** - 根据文档大小动态调整防抖时间
-  - 0-2KB: 50ms
-  - 2KB-10KB: 50ms → 300ms
-  - 10KB-50KB: 300ms → 600ms
-  - 50KB+: 1000ms
-- **重入保护** - 防止渲染过程中的重复触发
-- **跳帧保护** - 最小渲染间隔 300ms，避免 UI 卡顿
-- **低优先级异步渲染** - 使用 `DispatcherPriority.Background` 保持 UI 响应
-
-### 列表场景优化
-- **智能滚动** - 禁用内部滚动条时自动适配高度
-- **事件冒泡** - 透明容器也能正确响应鼠标滚轮事件
-- **立即渲染** - 列表场景跳过流式防抖，直接渲染
-
-### 精细化排版
-- 标题层级分明（H1: 1.5×, H2: 1.25×, H3: 1.17×...）
-- 列表缩进合理（首级 20px，嵌套每级 +5px）
-- 列表标记大小适中（一级 1.08×，嵌套 0.96×）
-- 代码字体略小（0.92×）以提高密度
+项目结构、性能优化与实现细节见 [Guid.md](Guid.md)。
 
 ## 🛠️ 技术栈
 

@@ -39,6 +39,7 @@
         <!-- MarkdView 控件 - 主题由全局 ThemeManager 控制 -->
         <markd:MarkdownViewer x:Name="MarkdownViewer" Grid.Row="1" Margin="10"
                               Content="{Binding Content}"
-                              EnableSyntaxHighlighting="True" FontSize="12" Theme="Auto" />
+                              EnableSyntaxHighlighting="True" FontSize="12" Theme="Auto"
+                              UseTransparentCanvas="True" />
     </Grid>
 </Window>

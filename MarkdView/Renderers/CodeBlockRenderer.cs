@@ -16,13 +16,12 @@ namespace MarkdView.Renderers;
 public class CodeBlockRenderer
 {
     private readonly bool _enableSyntaxHighlighting;
-    private readonly ThemeMode _themeMode;
     private readonly double _baseFontSize;
 
     public CodeBlockRenderer(bool enableSyntaxHighlighting, ThemeMode themeMode = ThemeMode.Dark, double baseFontSize = 12.0)
     {
         _enableSyntaxHighlighting = enableSyntaxHighlighting;
-        _themeMode = themeMode;
+        _ = themeMode;
         _baseFontSize = baseFontSize;
     }
 
@@ -354,8 +353,7 @@ public class CodeBlockRenderer
         // 启用语法高亮
         if (_enableSyntaxHighlighting)
         {
-            var isLightTheme = _themeMode == ThemeMode.Light;
-            SyntaxHighlighter.ApplyHighlighting(codeTextBlock, code, language, isLightTheme);
+            SyntaxHighlighter.ApplyHighlighting(codeTextBlock, code, language);
         }
         else
         {

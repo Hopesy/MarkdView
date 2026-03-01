@@ -143,6 +143,13 @@ public class MarkdownViewer : ContentControl
             typeof(MarkdownViewer),
             new PropertyMetadata(ScrollBarVisibility.Auto, OnHorizontalScrollBarVisibilityChanged));
 
+    public static readonly DependencyProperty UseTransparentCanvasProperty =
+        DependencyProperty.Register(
+            nameof(UseTransparentCanvas),
+            typeof(bool),
+            typeof(MarkdownViewer),
+            new PropertyMetadata(false, OnUseTransparentCanvasChanged));
+
     #endregion
 
     #region 公共属性
@@ -204,6 +211,15 @@ public class MarkdownViewer : ContentControl
     {
         get => (ScrollBarVisibility)GetValue(HorizontalScrollBarVisibilityProperty);
         set => SetValue(HorizontalScrollBarVisibilityProperty, value);
+    }
+
+    /// <summary>
+    /// 是否使用透明画布背景。默认 false，使用主题定义的 Markdown.Background。
+    /// </summary>
+    public bool UseTransparentCanvas
+    {
+        get => (bool)GetValue(UseTransparentCanvasProperty);
+        set => SetValue(UseTransparentCanvasProperty, value);
     }
 
     #endregion
@@ -425,6 +441,14 @@ public class MarkdownViewer : ContentControl
         }
     }
 
+    private static void OnUseTransparentCanvasChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is MarkdownViewer viewer)
+        {
+            viewer.RenderMarkdown();
+        }
+    }
+
     #endregion
 
     #region Markdown 渲染
@@ -495,6 +519,7 @@ public class MarkdownViewer : ContentControl
         var fontFamily = FontFamily;
         var fontSize = FontSize;
         var enableHighlighting = EnableSyntaxHighlighting;
+        var useTransparentCanvas = UseTransparentCanvas;
         // 如果 Theme=Auto，使用全局主题；否则使用控件自己的主题设置
         var theme = Theme == ThemeMode.Auto ? ThemeManager.CurrentTheme : Theme;
 
@@ -521,7 +546,8 @@ public class MarkdownViewer : ContentControl
                     fontFamily,
                     fontSize,
                     enableHighlighting,
-                    codeBlockRenderer);
+                    codeBlockRenderer,
+                    useTransparentCanvas);
 
 
                 // 设置Document
