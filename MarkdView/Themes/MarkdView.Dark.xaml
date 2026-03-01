@@ -1,68 +1,41 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- ==================== 深色主题 ==================== -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!-- 基础颜色 -->
     <SolidColorBrush x:Key="Markdown.Foreground" Color="#E6E9EF" />
-    <!-- RGB(230,233,239) -->
     <SolidColorBrush x:Key="Markdown.Background" Color="#1A1B1D" />
-    <!-- RGB(26,27,29) -->
     <SolidColorBrush x:Key="Markdown.Bold.Foreground" Color="#4C63EB" />
-    <!-- RGB(76,99,235) -->
     <Thickness x:Key="Markdown.PagePadding">18,14,18,16</Thickness>
     <Thickness x:Key="Markdown.Heading.BorderThickness">0,0,0,1</Thickness>
     <!-- 标题 -->
     <SolidColorBrush x:Key="Markdown.Heading.H1.Foreground" Color="#F4F6FB" />
-    <!-- RGB(244,246,251) -->
     <SolidColorBrush x:Key="Markdown.Heading.H1.Border" Color="#4C63EB" />
-    <!-- RGB(76,99,235) -->
     <SolidColorBrush x:Key="Markdown.Heading.H2.Foreground" Color="#DCE1EA" />
-    <!-- RGB(220,225,234) -->
     <SolidColorBrush x:Key="Markdown.Heading.H2.Border" Color="#343842" />
-    <!-- RGB(52,56,66) -->
     <!-- 引用块 -->
     <SolidColorBrush x:Key="Markdown.Quote.Background" Color="#23252A" />
-    <!-- RGB(35,37,42) -->
     <SolidColorBrush x:Key="Markdown.Quote.Border" Color="#4C63EB" />
-    <!-- RGB(76,99,235) -->
     <SolidColorBrush x:Key="Markdown.Quote.Foreground" Color="#D5DAE4" />
-    <!-- RGB(213,218,228) -->
     <Thickness x:Key="Markdown.Quote.BorderThickness">3,0,0,0</Thickness>
     <Thickness x:Key="Markdown.Quote.Padding">14,10,14,10</Thickness>
     <!-- 内联代码 -->
     <SolidColorBrush x:Key="Markdown.InlineCode.Background" Color="#2A2D36" />
-    <!-- RGB(42,45,54) -->
     <SolidColorBrush x:Key="Markdown.InlineCode.Foreground" Color="#D7DEFF" />
-    <!-- RGB(215,222,255) -->
     <SolidColorBrush x:Key="Markdown.InlineCode.Border" Color="#3D4250" />
-    <!-- RGB(61,66,80) -->
     <Thickness x:Key="Markdown.InlineCode.BorderThickness">1</Thickness>
     <CornerRadius x:Key="Markdown.InlineCode.CornerRadius">4</CornerRadius>
     <!-- 链接 -->
     <SolidColorBrush x:Key="Markdown.Link.Foreground" Color="#4C63EB" />
-    <!-- RGB(76,99,235) -->
     <!-- 代码块 -->
     <SolidColorBrush x:Key="Markdown.CodeBlock.Background" Color="#1A2230" />
-    <!-- RGB(26,34,48) GitHub Dark(提亮) -->
     <SolidColorBrush x:Key="Markdown.CodeBlock.Border" Color="#30363D" />
-    <!-- RGB(48,54,61) GitHub Dark -->
     <SolidColorBrush x:Key="Markdown.CodeBlock.Header.Background" Color="#161B22" />
-    <!-- RGB(22,27,34) GitHub Dark -->
     <SolidColorBrush x:Key="Markdown.CodeBlock.Language.Foreground" Color="#8B949E" />
-    <!-- RGB(139,148,158) GitHub Dark -->
     <SolidColorBrush x:Key="Markdown.CodeBlock.CopyButton.Background" Color="#21262D" />
-    <!-- RGB(33,38,45) GitHub Dark -->
     <SolidColorBrush x:Key="Markdown.CodeBlock.CopyButton.Foreground" Color="#C9D1D9" />
-    <!-- RGB(201,209,217) GitHub Dark -->
     <SolidColorBrush x:Key="Markdown.CodeBlock.CopyButton.Border" Color="#30363D" />
-    <!-- RGB(48,54,61) GitHub Dark -->
     <SolidColorBrush x:Key="Markdown.CodeBlock.CopyButton.HoverBackground" Color="#30363D" />
-    <!-- RGB(48,54,61) GitHub Dark -->
     <SolidColorBrush x:Key="Markdown.CodeBlock.CopyButton.HoverBorder" Color="#8B949E" />
-    <!-- RGB(139,148,158) GitHub Dark -->
     <SolidColorBrush x:Key="Markdown.CodeBlock.CopyButton.PressedBackground" Color="#161B22" />
-    <!-- RGB(22,27,34) GitHub Dark -->
     <SolidColorBrush x:Key="Markdown.CodeBlock.Foreground" Color="#C9D1D9" />
-    <!-- RGB(201,209,217) GitHub Dark -->
     <!-- 语法高亮 -->
     <SolidColorBrush x:Key="Markdown.Syntax.Default" Color="#C9D1D9" />
     <SolidColorBrush x:Key="Markdown.Syntax.Comment" Color="#8B949E" />
@@ -78,22 +51,15 @@
     <SolidColorBrush x:Key="Markdown.Syntax.ShellCommand" Color="#7EE787" />
     <!-- 其他 -->
     <SolidColorBrush x:Key="Markdown.Table.Background" Color="#0D1117" />
-    <!-- RGB(13,17,23) GitHub Dark -->
     <SolidColorBrush x:Key="Markdown.Table.Border" Color="#30363D" />
-    <!-- RGB(48,54,61) GitHub Dark -->
     <SolidColorBrush x:Key="Markdown.Table.Header.Background" Color="#161B22" />
-    <!-- RGB(22,27,34) GitHub Dark -->
     <SolidColorBrush x:Key="Markdown.Table.Header.Foreground" Color="#C9D1D9" />
-    <!-- RGB(201,209,217) GitHub Dark -->
     <SolidColorBrush x:Key="Markdown.Table.Row.Background" Color="#0D1117" />
-    <!-- RGB(13,17,23) GitHub Dark -->
     <SolidColorBrush x:Key="Markdown.HorizontalRule.Border" Color="#3A3F4B" />
-    <!-- RGB(58,63,75) -->
     <Thickness x:Key="Markdown.HorizontalRule.Margin">0,18,0,18</Thickness>
     <Thickness x:Key="Markdown.HorizontalRule.BorderThickness">0,1,0,0</Thickness>
-    <SolidColorBrush x:Key="Markdown.Image.Background" Color="Transparent" />
+    <SolidColorBrush x:Key="Markdown.Image.Background" Color="Transparent" /> +
     <SolidColorBrush x:Key="Markdown.Image.Border" Color="#3B404C" />
-    <!-- RGB(59,64,76) -->
     <Thickness x:Key="Markdown.Image.BorderThickness">1</Thickness>
     <CornerRadius x:Key="Markdown.Image.CornerRadius">8</CornerRadius>
     <FontFamily x:Key="Markdown.CodeFontFamily">Cascadia Code,Consolas,Segoe UI Mono</FontFamily>

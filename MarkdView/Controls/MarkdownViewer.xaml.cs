@@ -120,14 +120,14 @@ public class MarkdownViewer : ContentControl
             nameof(FontFamily),
             typeof(FontFamily),
             typeof(MarkdownViewer),
-            new PropertyMetadata(new FontFamily("Microsoft YaHei UI, Segoe UI"), OnFontFamilyChanged));
+            new PropertyMetadata(new FontFamily("Noto Sans, SF Pro SC, SF Pro Text, SF Pro Icons, PingFang SC, Helvetica Neue, Helvetica, Arial"), OnFontFamilyChanged));
 
     public new static readonly DependencyProperty FontSizeProperty =
         DependencyProperty.Register(
             nameof(FontSize),
             typeof(double),
             typeof(MarkdownViewer),
-            new PropertyMetadata(12.0, OnFontSizeChanged));
+            new PropertyMetadata(14.0, OnFontSizeChanged));
 
     public static readonly DependencyProperty VerticalScrollBarVisibilityProperty =
         DependencyProperty.Register(

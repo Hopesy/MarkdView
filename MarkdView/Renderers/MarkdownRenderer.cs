@@ -41,7 +41,7 @@ public class MarkdownRenderer
     {
         _pipeline = pipeline;
         _baseFontSize = 12.0;
-        _fontFamily = new FontFamily("Microsoft YaHei UI, Segoe UI");
+        _fontFamily = new FontFamily("Noto Sans, SF Pro SC, SF Pro Text, SF Pro Icons, PingFang SC, Helvetica Neue, Helvetica, Arial");
     }
 
     /// <summary>
