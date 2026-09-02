@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/download)
-[![Version](https://img.shields.io/badge/Version-1.0.11-green.svg)](https://github.com/hopesy/MarkdView)
+[![Version](https://img.shields.io/badge/Version-1.0.12-green.svg)](https://github.com/hopesy/MarkdView)
 
 > 现代化 WPF Markdown 渲染控件，支持流式渲染、语法高亮和智能主题管理。
 
