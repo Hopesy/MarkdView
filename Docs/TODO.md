@@ -1,218 +1,45 @@
-# MarkdView 待办事项
+# MarkdView 路线图
 
-## 🚀 v0.2.0 - 主题与交互增强
+## 已完成的稳定性修复
 
-### 主题系统
-- [x] 创建 `Themes/Light.xaml` - 完整的浅色主题资源字典
-- [x] 创建 `Themes/Dark.xaml` - 完整的深色主题资源字典
-- [x] 创建 `Themes/HighContrast.xaml` - 高对比度主题
-- [x] 添加 `ThemeManager` 类用于动态切换主题
-- [x] 主题预览示例（在 Samples/Themes/ 中）
+- [x] 修复 Dark 主题 XAML 语法错误和 Generic.xaml 运行时资源 URI。
+- [x] 主题资源采用事务式替换，加载失败不破坏旧主题。
+- [x] 统一全局主题模型，控件不会互相覆盖主题。
+- [x] 支持删除线、自动链接、HTML 文本降级和任务列表复选框。
+- [x] 未知 Markdown 节点不再静默丢失。
+- [x] 图片协议白名单、URI 长度限制、地址解析校验和失败占位。
+- [x] 图片下载使用每请求超时取消、响应大小上限和文档数量限制，并禁止自动重定向。
+- [x] 修复渲染期间内容/配置更新丢失、空内容清空和卸载重挂载状态。
+- [x] 恢复 xUnit WPF 测试项目并加入解决方案。
+- [x] NuGet 包包含 README、LICENSE、icon.png 和 Guid.md。
+- [x] 解析器、高亮、图片、链接和剪贴板支持可替换端口，并保留默认实现。
+- [x] 主题状态通过 `IThemeService` 端口注入，静态 `ThemeManager` 保留为兼容外观。
+- [x] 图片限制和代码块尺寸进入 `MarkdownRenderOptions`/`Markdown.*` 资源，单次渲染配置保持一致。
+- [x] 主题资源访问明确 Dispatcher 边界，失效 Dispatcher 不再导致等待死锁。
+- [x] 卸载期间阻止异步渲染重新排队，图片加载取消不会覆盖新文档。
+- [x] 建立不暴露 Markdig 类型的 `MarkdownDocumentModel` 快照和内容哈希。
+- [x] 统一模型 renderer 与兼容 renderer 的布局回退值，并将常用块级间距压缩到主题资源。
+- [x] 将图片解码像素上限纳入控件配置和渲染请求快照，避免大图解码占用不可控内存。
 
-### 代码块增强
-- [x] 添加代码块复制按钮
-  - [x] 创建 `CodeBlockControl` 自定义控件
-  - [x] 复制到剪贴板功能
-  - [x] 复制成功提示动画
-  - [x] 鼠标悬停显示按钮
-- [ ] 行号显示选项
-- [ ] 代码折叠功能（长代码块）
+## 下一阶段
 
-### 语法高亮扩展
-- [x] 支持更多语言：
-  - [x] Rust
-  - [x] Swift
-  - [x] Go
-  - [ ] Kotlin
-  - [ ] PHP
-  - [ ] Ruby
-  - [ ] SQL
-  - [ ] Bash/Shell
-  - [ ] PowerShell
-  - [ ] HTML/XML
-  - [ ] CSS
-- [ ] 考虑集成完整的语法高亮库（ColorCode.Core 或 AvalonEdit）
-- [ ] 支持自定义语法高亮规则
+- [x] 将 `MarkdownDocumentModel` 扩展为块/内联语义（文本、强调、删除线、代码、链接、图片、自动链接、换行、HTML、任务状态和源范围已覆盖）；继续增加扩展节点时保持向后兼容。
+- [ ] 将剩余复杂节点的 WPF FlowDocument 转换全部迁移到独立的 `WpfFlowDocumentRenderer`（当前未覆盖块已按顶层块混合回退）。
+- [x] 标题、普通段落、引用、列表、表格、水平分隔线、行内代码、任务状态、普通链接、自动链接、图片、代码块、HTML 文本降级和基础内联语义已迁移到模型驱动的 `WpfSimpleMarkdownRenderer`；未覆盖的扩展节点保留能力回退。
+- [x] 为 coordinator 引入分离的 `IMarkdownDocumentParser` 与 `IMarkdownFlowDocumentRenderer` 端口，允许独立 WPF 适配器替换当前兼容实现。
+- [x] 引入有界线程安全 `MarkdownDocumentCache`，按源文本做 LRU 快照复用，并支持并发 single-flight 与 Clear epoch。
+- [x] 将图片异步安装和链接导航事件从 `MarkdownRenderer` 提取到独立 WPF 适配器。
+- [x] 将防抖、版本竞争和取消状态迁移到 `MarkdownRenderCoordinator`；控件仅计算自适应延迟并提交最新请求。
+- [ ] 为大文档引入增量渲染或虚拟化，并增加性能基准。
+- [ ] 增加真实窗口自动化回归：主题按钮、滚动、代码复制和控件重挂载（当前仅完成 Samples 进程启动验证）。
+- [ ] 完成更多 Markdig 扩展节点的原生 WPF 渲染策略（脚注、定义列表、数学公式等；当前已有稳定模型和兼容回退）。
+- [x] 为脚注、定义列表和数学节点建立稳定模型类型与兼容回退标志，后续只需替换 WPF 节点 renderer。
+- [x] 配置 GitHub Actions，在 Windows 上执行 restore、build、test、pack 和包内容检查。
+- [ ] 评估升级 Markdig 前后的兼容性和渲染差异。
 
-### 交互功能
-- [x] 链接点击事件处理
-  - [x] `LinkClicked` 事件
-  - [x] 自定义链接处理器
-  - [ ] 默认浏览器打开（需在外部实现）
-- [ ] 图片功能增强
-  - [ ] 加载状态指示器
-  - [ ] 加载失败占位符
-  - [ ] 图片点击放大预览
-  - [ ] 懒加载支持
+## 暂不支持的语义
 
-### 性能优化
-- [ ] 虚拟化支持（超长文档）
-- [ ] 渲染性能分析工具
-- [ ] 内存使用优化
-- [ ] 异步渲染选项
-
----
-
-## 🎯 v0.3.0 - 高级渲染特性
-
-### 数学公式
-- [ ] LaTeX 数学公式渲染
-  - [ ] 集成 WpfMath 或类似库
-  - [ ] 行内公式 `$...$`
-  - [ ] 块级公式 `$$...$$`
-  - [ ] 公式复制功能
-
-### 图表支持
-- [ ] Mermaid 图表渲染
-  - [ ] 流程图
-  - [ ] 时序图
-  - [ ] 甘特图
-  - [ ] 类图
-- [ ] PlantUML 支持（可选）
-
-### 扩展 API
-- [ ] 自定义渲染器插件系统
-  - [ ] `IMarkdownExtension` 接口
-  - [ ] 渲染器注册机制
-  - [ ] 示例：表情符号渲染器
-  - [ ] 示例：任务列表渲染器
-- [ ] Markdown 预处理钩子
-- [ ] 后处理钩子（DOM 操作）
-
-### Markdown 扩展语法
-- [ ] 任务列表 `- [ ]` / `- [x]`
-- [ ] 脚注支持
-- [ ] 定义列表
-- [ ] 表情符号 `:emoji:`
-- [ ] 上标/下标
-- [ ] 高亮标记 `==text==`
-
----
-
-## 📦 v0.4.0 - 发布与生态
-
-### NuGet 发布
-- [ ] 准备 NuGet 包元数据
-- [ ] 创建 Logo 和图标
-- [ ] 编写发布说明
-- [ ] 发布到 NuGet.org
-- [ ] 配置 CI/CD（GitHub Actions）
-
-### 文档网站
-- [ ] 使用 Docusaurus 或 VitePress 创建文档站点
-- [ ] API 参考文档
-- [ ] 更多使用示例
-- [ ] 最佳实践指南
-- [ ] 性能调优指南
-
-### 示例项目
-- [ ] 创建独立的示例解决方案
-- [ ] AI 聊天应用示例
-- [ ] Markdown 编辑器示例
-- [ ] 文档查看器示例
-
-### 质量保证
-- [ ] 单元测试（目标覆盖率 80%）
-- [ ] 性能基准测试
-- [ ] 内存泄漏测试
-- [ ] UI 自动化测试
-
----
-
-## 🐛 Bug 修复与改进
-
-### 已知问题
-- 当前无已知严重 bug
-
-### 改进建议
-- [ ] 优化超长单行文本的处理
-- [ ] 改进表格响应式布局
-- [ ] 增强滚动性能（大文档）
-- [ ] 支持 Right-to-Left (RTL) 文本
-- [ ] 辅助功能（无障碍）改进
-
----
-
-## 🔧 技术债务
-
-- [ ] 添加 XML 文档注释到所有公共 API
-- [ ] 创建 Analyzer 和 Source Generator（可选）
-- [ ] 审查并优化异常处理
-- [ ] 标准化日志记录（ILogger）
-- [ ] 代码风格统一（EditorConfig）
-
----
-
-## 💡 未来想法（待评估）
-
-- [ ] 支持移动平台（MAUI/Avalonia）
-- [ ] 实时协作编辑支持
-- [ ] Markdown 导出功能（PDF, HTML, DOCX）
-- [ ] AI 辅助的 Markdown 建议
-- [ ] 集成 spell checker
-- [ ] 支持自定义快捷键
-
----
-
-## ✅ 已完成（v0.2.0）
-
-- ✅ 项目重命名：MarkdView.Core → MarkdView
-- ✅ Extensions 和 Samples 改为文件夹结构
-- ✅ 创建 `Themes/Light.xaml` - 完整的浅色主题资源字典
-- ✅ 创建 `Themes/Dark.xaml` - 完整的深色主题资源字典
-- ✅ 创建 `Themes/HighContrast.xaml` - 高对比度主题
-- ✅ 添加 `ThemeManager` 类用于动态切换主题
-- ✅ 主题预览示例（在 Samples/Themes/ 中）
-- ✅ 添加代码块复制按钮
-  - ✅ 创建 `CodeBlockControl` 自定义控件
-  - ✅ 复制到剪贴板功能
-  - ✅ 复制成功提示动画
-  - ✅ 鼠标悬停显示按钮
-- ✅ 集成 CodeBlockControl 到 CodeBlockRenderer
-- ✅ 支持更多语言语法高亮：
-  - ✅ Rust
-  - ✅ Swift
-  - ✅ Go
-- ✅ 链接点击事件处理
-  - ✅ `LinkClicked` 事件
-  - ✅ 自定义链接处理器
-- ✅ 创建完整的示例文件和主题切换示例
-- ✅ 更新所有文档和版本信息
-- ✅ 在 MinoChat 中测试所有功能集成
-
-## ✅ 已完成（v0.1.0）
-
-- ✅ 创建 MarkdView.Core 项目结构
-- ✅ 迁移 MarkdownViewer 核心代码
-- ✅ 提取渲染器到独立类
-- ✅ 设计公共 API 和依赖属性
-- ✅ 编写 README 和示例文档
-- ✅ 在 MinoChat.Ui 中引用 MarkdView.Core
-- ✅ 更新 MinoChat 使用新的 MarkdView 控件
-- ✅ 构建并测试项目
-- ✅ 创建交互式示例窗口（BasicUsage.xaml）
-- ✅ 实现基础语法高亮（5+ 语言）
-- ✅ 流式渲染支持
-- ✅ 主题资源引用系统
-- ✅ 编写 CHANGELOG.md
-
----
-
-**最后更新**: 2025-11-16
-**当前版本**: v0.2.0
-**下一里程碑**: v0.3.0（高级渲染特性）
-
-## 贡献指南
-
-如果你想贡献代码或提出建议：
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
-
-**优先级标签**:
-- 🔴 高优先级 - 核心功能/严重 bug
-- 🟡 中优先级 - 增强功能/性能优化
-- 🟢 低优先级 - 改进/美化/实验性功能
+- `Theme="Light"` 或 `Theme="Dark"` 不创建控件级主题；它们保留为兼容值。要切换主题，请调用 `ThemeManager.ApplyTheme`。
+- 不提供 `Markdown` 属性、`AppendMarkdown()` 或 `Clear()` 方法；请使用 `Content` 属性。
+- 不提供 `LinkClicked` 事件；链接通过 WPF `Hyperlink.RequestNavigate` 处理，并受协议白名单保护。
+- 当前没有 `HighContrast.xaml`、`CodeBlockControl` 或 Markdig.Wpf 依赖。

@@ -3,7 +3,7 @@
                     xmlns:local="clr-namespace:MarkdView.Controls">
     <Style TargetType="{x:Type local:MarkdownViewer}">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+        <Setter Property="Foreground" Value="{DynamicResource Markdown.Foreground}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type local:MarkdownViewer}">

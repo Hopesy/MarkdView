@@ -1,69 +1,58 @@
 # MarkdView Guide
 
-本文档存放实现细节、架构信息与扩展说明。`README.md` 仅保留快速上手和常用配置。
+本文档记录当前实现的主题、渲染和扩展边界。快速上手请看 `README.md`。
 
-## 主题同步机制
+## 主题模型
 
-无论使用哪种模式，`ThemeManager.CurrentTheme` 始终反映当前实际使用的主题：
-- 模式 1：`ThemeManager.ApplyTheme()` 更新全局主题，所有 `Theme="Auto"` 的控件自动跟随
-- 模式 2：控件 `Theme` 属性改变，更新控件主题并同步到 `ThemeManager.CurrentTheme`
+主题是应用级资源字典，由 `ThemeManager.ApplyTheme(ThemeMode.Light)` 或 `ApplyTheme(ThemeMode.Dark)` 切换。`ThemeManager.CurrentTheme` 只有在新资源字典成功加载并替换后才更新；加载失败会保留旧资源和旧状态。
 
-## 可用主题资源键
+`MarkdownViewer.Theme` 默认是 `Auto`，只保留为兼容属性，不创建控件级资源范围，也不会覆盖其他控件。需要改变显示主题时，应由应用统一调用 `ThemeManager`。
 
-主题资源文件：
-- 浅色主题：`MarkdView/Themes/MarkdView.Light.xaml`
-- 深色主题：`MarkdView/Themes/MarkdView.Dark.xaml`
+## 资源字典
+
+- `MarkdView/Themes/Generic.xaml`: 默认控件模板入口。
+- `MarkdView/Themes/MarkdView.Light.xaml`: 浅色主题。
+- `MarkdView/Themes/MarkdView.Dark.xaml`: 深色主题。
 
 常用资源键：
+
 - `Markdown.Foreground` / `Markdown.Background`
-- `Markdown.Heading.H1.Foreground` / `Markdown.Heading.H1.Border`
-- `Markdown.Quote.Background` / `Markdown.Quote.Border`
-- `Markdown.CodeBlock.Background` / `Markdown.CodeBlock.Foreground`
-- `Markdown.CodeBlock.Header.Background`
-- `Markdown.CodeBlock.CopyButton.Background` / `Markdown.CodeBlock.CopyButton.Foreground`
-- `Markdown.InlineCode.Background` / `Markdown.InlineCode.Foreground`
-- `Markdown.Link.Foreground`
+- `Markdown.Toolbar.*`、`Markdown.Surface.*`、`Markdown.Divider`、`Markdown.Muted.Foreground`、`Markdown.Subtle.Foreground`、`Markdown.Accent`
+- `Markdown.Heading.H1` 到 `Markdown.Heading.H6` 的 `Foreground` 和 `Border`
+- `Markdown.Quote.Background` / `Markdown.Quote.Border` / `Markdown.Quote.Foreground`
+- `Markdown.CodeBlock.*`、`Markdown.InlineCode.*`、`Markdown.Link.Foreground`
+- `Markdown.Paragraph.Margin`、`Markdown.Heading.H1` 到 `H6` 的 `Margin`、`Markdown.Quote.Margin`、`Markdown.List.*`、`Markdown.Table.*`
+- `Markdown.TaskList.Margin`、`Markdown.InlineCode.Padding`、`Markdown.Image.*`
+- `Markdown.PagePadding`、`Markdown.LineHeight`、`Markdown.HorizontalRule.*`
+- `Markdown.CodeBlock.Margin`、`Content.Padding`、`Content.MaxHeight`、`Header.Height`、`CodeFontScale`、`Dot.*`、`CopyButton.*`
+- `Markdown.InlineCode.FontScale`、`LineHeightScale`、`MinHeightScale`
+- `Markdown.Image.MaxWidth`、`TooltipMaxWidth`、`Placeholder.Margin`、`Margin`
+- `Markdown.Syntax.Default`、`Comment`、`String`、`Attribute`、`ControlKeyword`、`DeclarationKeyword`、`TypeKeyword`、`Literal`、`Type`、`Function`、`Number`、`ShellCommand`
 
-语法高亮资源键：
-- `Markdown.Syntax.Default` / `Markdown.Syntax.Comment` / `Markdown.Syntax.String` / `Markdown.Syntax.Attribute`
-- `Markdown.Syntax.ControlKeyword` / `Markdown.Syntax.DeclarationKeyword` / `Markdown.Syntax.TypeKeyword` / `Markdown.Syntax.Literal`
-- `Markdown.Syntax.Type` / `Markdown.Syntax.Function` / `Markdown.Syntax.Number` / `Markdown.Syntax.ShellCommand`
+## 渲染边界
 
-### 颜色控制范围
+Markdown 文本通过 `MarkdownViewer.Content` 设置。Markdig 解析阶段可在线程池执行，FlowDocument 和其他 WPF 对象必须在 UI 线程创建。内容或配置在渲染期间变化时，旧结果会被版本号丢弃，最新请求会在当前渲染结束后继续处理。
 
-`MarkdView.Dark.xaml` / `MarkdView.Light.xaml` 已覆盖绝大多数渲染颜色（正文、标题、引用、表格、代码块容器、复制按钮、语法高亮）。
+支持的主要节点包括标题、段落、引用、普通/有序列表、任务列表、表格、代码块、分隔线、链接、自动链接、图片、HTML 文本降级、Emoji、删除线、粗体、斜体和行内代码。脚注、定义列表、数学公式等复杂扩展会在模型中保留稳定节点类型、源范围和兼容回退标志，当前通过兼容 renderer 输出可读内容；未支持节点不会静默丢失，并会记录 Debug 日志。
 
-当前仍有少量颜色不由主题资源键直接控制：
-- 代码块标题栏左侧 Mac 风格三色圆点（固定装饰色）
-- 部分异常显示颜色（如渲染错误、图片加载失败）使用固定红色
-- 资源键缺失时回退到代码中的默认兜底色
+外部链接仅允许 `http`、`https`、`mailto`。图片仅允许 `http`/`https`，异步加载并默认使用 10 秒超时、8 MB 单图上限、64 张/文档上限和 1600 像素解码宽/高上限；控件可通过图片配置属性调整这些值，但仍受安全上限约束。请求不跟随重定向，并会校验域名解析结果。本地文件、UNC、`data:`、回环和私有 IP 地址会被拒绝。
 
-## 项目结构
+解析、图片、链接、剪贴板和语法高亮均有独立端口，默认实现由 `MarkdownViewer` 的无参构造提供；宿主可以通过构造函数注入缓存、代理、应用内导航和测试 fake。图片端口返回抽象的 `BitmapSource`，而不是绑定具体解码类。控件的图片超时、单图字节数、解码像素和文档图片数量会在请求开始时冻结，保证同一文档内策略一致。
 
-```text
-MarkdView/
-├── Controls/
-│   └── MarkdownViewer.xaml(.cs)    # 主 Markdown 渲染控件
-├── Renderers/
-│   ├── MarkdownRenderer.cs         # Markdown 渲染器
-│   └── CodeBlockRenderer.cs        # 代码块渲染器（Mac 风格）
-├── Enums/
-│   └── ThemeMode.cs                # 主题模式枚举
-├── ThemeManager.cs                 # 静态主题管理器
-└── Themes/
-    ├── MarkdView.Light.xaml        # 浅色主题资源字典
-    └── MarkdView.Dark.xaml         # 深色主题资源字典
+## 公共事件
+
+- `RenderCompleted`: 成功或失败的渲染流程结束时都会触发。
+- `RenderFailed`: 渲染失败时携带 `MarkdownRenderFailedEventArgs.Exception`。
+
+事件处理器异常会单独记录，不会改变渲染结果或主题状态。
+
+## 项目验证
+
+```powershell
+dotnet restore MarkdView.slnx
+dotnet build MarkdView.slnx --configuration Release --no-restore -warnaserror
+dotnet test MarkdView.slnx --configuration Release --no-restore
+dotnet pack MarkdView/MarkdView.csproj --configuration Release --no-restore
 ```
 
-## 性能与优化
-
-流式渲染优化：
-- 自适应防抖：文档越大防抖间隔越大
-- 重入保护：防止渲染过程重复触发
-- 跳帧保护：最小渲染间隔 300ms
-- 低优先级异步渲染：`DispatcherPriority.Background`
-
-列表场景优化：
-- 禁用内部滚动条时自动适配内容高度
-- 鼠标滚轮事件冒泡到外层滚动容器
-- 列表模式支持立即渲染
+`MarkdView.Tests` 使用 xUnit，涉及 WPF 控件的测试在 STA 线程运行。NuGet 包应包含 `README.md`、`LICENSE`、`Guid.md` 和 `icon.png`。

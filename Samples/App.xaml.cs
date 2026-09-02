@@ -1,6 +1,8 @@
 ﻿using System.Configuration;
 using System.Data;
 using System.Windows;
+using MarkdView;
+using MarkdView.Enums;
 
 namespace Samples
 {
@@ -13,8 +15,8 @@ namespace Samples
         {
             base.OnStartup(e);
 
-            // 不在这里初始化主题，让 MarkdownViewer 控件自己的 Theme 属性决定
-            // ThemeManager.ApplyTheme(ThemeMode.Light);
+            // 先加载默认主题，避免窗口首次渲染时缺少 Markdown 资源而使用白底回退色。
+            ThemeManager.ApplyTheme(ThemeMode.Dark);
         }
     }
 

@@ -1,443 +1,85 @@
 # MarkdView 项目结构
 
-## 目录结构
+长期分层、依赖方向和迁移验收标准见 [ARCHITECTURE.md](ARCHITECTURE.md)。本文保留当前文件结构和运行职责说明。
 
-```
+## 当前目录
+
+```text
 MarkdView/
-├── MarkdView.csproj               # 项目文件（NuGet 配置）
-├── README.md                       # 项目说明和快速开始
-├── CHANGELOG.md                    # 版本更新日志
-├── TODO.md                         # 待办事项和路线图
-├── STRUCTURE.md                    # 本文件 - 项目结构说明
-├── EXAMPLES.md                     # 详细代码示例（11+ 场景）
-│
-├── Controls/                       # WPF 控件
-│   ├── MarkdownViewer.xaml        # 控件 UI 定义
-│   └── MarkdownViewer.xaml.cs     # 控件逻辑实现
-│
-├── Renderers/                      # Markdown 渲染器
-│   └── Blocks/                     # 块级元素渲染器
-│       └── CodeBlockRenderer.cs   # 代码块渲染（含语法高亮）
-│
-├── Extensions/                     # 扩展功能（不单独分项目）
-│   ├── Controls/                   # 自定义控件
-│   │   ├── CodeBlockControl.xaml  # 代码块控件（复制功能）
-│   │   └── CodeBlockControl.xaml.cs
-│   ├── Behaviors/                  # WPF 行为
-│   │   └── (待添加)
-│   └── Converters/                 # 值转换器
-│       └── (待添加)
-│
-├── Themes/                         # 主题资源字典（v0.2.0）
-│   ├── Light.xaml                  # 浅色主题
-│   ├── Dark.xaml                   # 深色主题
-│   └── HighContrast.xaml           # 高对比度主题
-│
-└── Samples/                        # 示例和演示
-    ├── Markdown/                   # Markdown 功能示例
-    │   ├── BasicFeatures.md        # 基础语法示例
-    │   ├── CodeHighlighting.md     # 代码高亮示例（8+ 语言）
-    │   └── AdvancedFeatures.md     # 高级功能示例
-    ├── Themes/                     # 主题示例
-    │   ├── ThemeSwitchExample.xaml # 主题切换演示窗口
-    │   └── ThemeSwitchExample.xaml.cs
-    └── README.md                   # 示例说明文档
+├── MarkdView/                 # NuGet 类库（net8.0-windows）
+│   ├── Controls/              # MarkdownViewer 和渲染失败事件参数
+│   ├── Renderers/             # Markdown AST、渲染选项、协调器和代码块渲染
+│   │   ├── MarkdownRenderOptions.cs
+│   │   ├── MarkdownRenderCoordinator.cs
+│   │   └── MarkdownRenderSession.cs
+│   ├── Parsing/               # Markdown 解析端口和 Markdig 适配器
+│   ├── Documents/             # 稳定 Markdown 文档模型
+│   ├── Interactions/          # 剪贴板和外部链接端口
+│   ├── Media/                 # 图片加载端口、安全策略和 HTTP 实现
+│   ├── Services/              # 语法高亮端口和默认实现
+│   ├── Themes/                # Generic、Light、Dark 资源字典
+│   ├── Enums/ThemeMode.cs
+│   ├── ThemeManager.cs
+│   └── AssemblyInfo.cs
+├── MarkdView.Tests/            # xUnit + WPF STA 测试
+├── Samples/                    # 可运行 WPF 示例
+├── Docs/                       # 使用示例和项目说明
+├── README.md
+├── Guid.md
+└── MarkdView.slnx
 ```
 
----
+## 核心职责
 
-## 核心文件说明
+### MarkdownViewer
 
-### 1. 项目配置
+`MarkdownViewer` 是 `ContentControl`，Markdown 文本通过 `Content` 属性提供。它负责模板承载、流式防抖、生命周期处理、主题事件订阅和渲染结果安装；解析取消、最新请求竞争和 Dispatcher 安装由 `MarkdownRenderCoordinator` 承担。
 
-#### `MarkdView.csproj`
-- **目标框架**: `net8.0-windows`
-- **依赖项**:
-  - Markdig 0.43.0 - Markdown 解析引擎
-  - Markdig.Wpf 0.5.0.1 - WPF 渲染扩展
-- **NuGet 元数据**:
-  - PackageId: `MarkdView`
-  - Version: `0.2.0`
-  - License: MIT
-  - Description: 现代化 WPF Markdown 渲染库
+主要属性：
 
----
+- `Content`: Markdown 字符串，空字符串也是有效值。
+- `EnableStreaming`: 是否启用节流更新。
+- `StreamingThrottle`: 1 到 10000 毫秒的节流间隔。
+- `EnableSyntaxHighlighting`: 是否启用代码高亮。
+- `Theme`: 兼容属性，默认 `Auto`；实际资源由全局 `ThemeManager` 控制。
+- `FontFamily`、`FontSize`: 使用 WPF `Control` 属性的 owner，支持继承和有效值校验。
+- `VerticalScrollBarVisibility`、`HorizontalScrollBarVisibility`。
+- `UseTransparentCanvas`。
+- `ImageLoadTimeout`、`MaxImageBytes`、`MaxImagesPerDocument`、`MaxImageDecodePixel`: 图片请求级安全限制，进入 `MarkdownRenderOptions` 快照。
 
-### 2. 控件实现
+渲染成功触发 `RenderCompleted`，失败触发 `RenderFailed`，并且两种结果都会触发 `RenderCompleted`，因此调用方不会永久卡在 loading 状态。
 
-#### `Controls/MarkdownViewer.xaml`
-**职责**: 控件的 XAML 布局定义
+### MarkdownRenderer
 
-**结构**:
-```xml
-<UserControl>
-  <ScrollViewer>
-    <FlowDocumentScrollViewer x:Name="MarkdownDocument">
-      <!-- FlowDocument 在运行时动态生成 -->
-    </FlowDocumentScrollViewer>
-  </ScrollViewer>
-</UserControl>
+渲染器通过 `IMarkdownParser` 获取 Markdig 0.43.0 AST。`ParseMarkdown` 只做纯解析，可以在线程池执行；`ConvertDocumentToFlowDocument` 在 UI 线程创建 WPF 对象。
+
+`ParseDocumentModel` 返回不暴露 Markdig 类型的 `MarkdownDocumentModel`，包含内容哈希、块/内联语义、来源范围和嵌套关系，复杂扩展节点额外保留稳定类型名与 `RequiresCompatibilityRenderer` 标志，快照本身不持有 Markdig AST。解析端口和 WPF 输出端口已经拆开：`IMarkdownDocumentParser` 负责模型，`IMarkdownFlowDocumentRenderer` 负责 `FlowDocument`；`WpfFlowDocumentRenderer` 对已迁移块使用模型渲染，对未覆盖的顶层块按源片段执行兼容回退，后续迁移不会影响 coordinator 或控件。
+
+当前覆盖标题、段落、引用、列表、任务列表、表格、代码块、分隔线、普通链接、自动链接、图片、HTML 文本降级、Emoji、删除线、粗体、斜体和行内代码。遇到未覆盖的节点会输出可读文本并记录 Debug 日志，不会静默丢失内容。
+
+### MarkdownRenderCoordinator
+
+协调器只接收文本快照和 `MarkdownRenderOptions`，负责在线程池解析、取消过期请求，并将 FlowDocument 构建封送到目标 Dispatcher。被替换或已取消的请求返回 `null`，控件不会安装过期结果。
+
+外部链接仅允许 `http`、`https` 和 `mailto`。图片默认仅允许 `http`/`https`，限制 URI 长度、响应大小和数量，校验域名解析结果并禁止自动重定向；使用 `BitmapCacheOption.OnLoad` 和解码宽/高上限。图片端口返回抽象的 `BitmapSource`，默认 HTTP 实现返回冻结的 `BitmapImage`。本地文件、UNC、`data:` 等协议会显示阻止提示。
+
+### CodeBlockRenderer
+
+代码块是带语言标题、复制按钮和水平滚动的 `BlockUIContainer`；内容区域同时使用主题提供的最大高度，长代码在块内滚动而不会撑开整篇文档。语法高亮由 `SyntaxHighlighter` 完成，颜色使用 `Markdown.Syntax.*` 动态资源，随全局主题切换。代码块和常用块级间距由主题资源控制，资源缺失时由 `MarkdownLayoutDefaults` 提供一致的紧凑回退值。
+
+### ThemeManager
+
+主题是应用级资源字典，不支持控件之间互相独立覆盖。调用 `ThemeManager.ApplyTheme(ThemeMode.Light)` 或 `ApplyTheme(ThemeMode.Dark)` 完成全局切换；控件默认跟随当前主题。主题资源先加载成功再替换旧字典，失败时保留旧资源和旧状态。
+
+`Themes/Generic.xaml` 使用程序集绝对 pack URI 引用控件模板，确保只引用 NuGet 包的外部 WPF 应用也能发现默认样式。`AssemblyInfo.cs` 中的 `ThemeInfo` 位于 MarkdView 程序集，而不是 Samples 程序集。
+
+## 构建和验证
+
+```powershell
+dotnet restore MarkdView.slnx
+dotnet build MarkdView.slnx --configuration Release --no-restore
+dotnet test MarkdView.slnx --configuration Release --no-restore
+dotnet pack MarkdView/MarkdView.csproj --configuration Release --no-restore
 ```
 
-**关键点**:
-- 使用 `FlowDocumentScrollViewer` 承载渲染结果
-- 外层 `ScrollViewer` 处理滚动逻辑
-- 最小化 XAML，大部分逻辑在 Code-Behind
-
-#### `Controls/MarkdownViewer.xaml.cs`
-**职责**: 控件的核心逻辑实现
-
-**关键组件**:
-
-1. **依赖属性**（DependencyProperty）:
-   ```csharp
-   - Markdown (string)                    // Markdown 文本
-   - EnableStreaming (bool)               // 启用流式渲染
-   - StreamingThrottle (int, default=50)  // 防抖间隔
-   - EnableSyntaxHighlighting (bool)      // 启用语法高亮
-   ```
-
-2. **私有字段**:
-   ```csharp
-   - _updateTimer (DispatcherTimer)       // 防抖计时器
-   - _hasPendingUpdate (bool)             // 待处理更新标志
-   - _pendingText (string)                // 待渲染文本
-   - _lastRenderedText (string)           // 上次渲染文本（缓存）
-   - _pipeline (MarkdownPipeline)         // Markdig 管道
-   ```
-
-3. **公共方法**:
-   ```csharp
-   - Clear()                              // 清空内容
-   - AppendMarkdown(string)               // 追加 Markdown（流式）
-   ```
-
-4. **核心逻辑**:
-   - **属性变更处理**: `OnMarkdownChanged()` 监听 `Markdown` 属性
-   - **流式渲染**: `QueueUpdate()` → `_updateTimer` → `ProcessPendingUpdate()`
-   - **渲染管道**: `UpdateMarkdown()` → `CreateRenderer()` → `Markdown.ToFlowDocument()`
-   - **缓存机制**: `_lastRenderedText` 避免重复渲染
-   - **主题集成**: `TrySetResourceReference()` 绑定动态资源
-
-**渲染流程**:
-```
-用户设置 Markdown 属性
-    ↓
-OnMarkdownChanged() 触发
-    ↓
-QueueUpdate() 加入队列
-    ↓
-[50ms 防抖等待]
-    ↓
-ProcessPendingUpdate() 执行
-    ↓
-UpdateMarkdown() 渲染
-    ↓
-创建 WpfRenderer（含自定义渲染器）
-    ↓
-Markdig.Wpf.Markdown.ToFlowDocument()
-    ↓
-应用主题样式 ApplyCustomStyles()
-    ↓
-更新 FlowDocument
-```
-
----
-
-### 3. 渲染器
-
-#### `Renderers/Blocks/CodeBlockRenderer.cs`
-**职责**: 自定义代码块渲染，提供语法高亮
-
-**继承关系**:
-```csharp
-WpfObjectRenderer<CodeBlock>  // Markdig.Wpf 基类
-    ↓
-CodeBlockRenderer             // 自定义实现
-```
-
-**功能**:
-
-1. **语言检测**:
-   ```csharp
-   GetLanguage(CodeBlock) → 从 Fenced 代码块读取语言标识
-   ```
-
-2. **语法高亮规则**:
-   - **关键字**: 编程语言保留字（if, class, function 等）
-   - **注释**: 单行 `//`、多行 `/* */`、Python `#`
-   - **字符串**: 双引号/单引号/模板字符串
-   - **数字**: 整数、浮点数、十六进制
-
-3. **支持的语言** (8+):
-   - C# (`csharp`, `cs`, `c#`)
-   - JavaScript (`javascript`, `js`)
-   - TypeScript (`typescript`, `ts`)
-   - Python (`python`, `py`)
-   - Java (`java`)
-   - Go (`go`, `golang`)
-   - Rust (`rust`, `rs`)
-   - Swift (`swift`)
-
-4. **渲染输出**:
-   ```
-   ┌────────────────────────────┐
-   │ 📄 C#                      │  ← 语言标签
-   ├────────────────────────────┤
-   │ public class HelloWorld    │  ← 代码内容（带颜色）
-   │ {                          │
-   │     // 注释                 │
-   │     Console.WriteLine(...) │
-   │ }                          │
-   └────────────────────────────┘
-   ```
-
-5. **配色方案**（深色友好）:
-   - 默认文本: `#ABB2BF`
-   - 注释: `#5C6370`
-   - 关键字: `#C678DD`（紫色）
-   - 字符串: `#98C379`（绿色）
-   - 数字: `#D19A66`（橙色）
-   - 背景: `#1E1E1E`（深灰）
-
-**扩展点**:
-- `GetKeywords(string)` - 添加新语言的关键字集
-- `ApplySyntaxHighlighting()` - 修改高亮规则
-
----
-
-### 4. 扩展功能
-
-#### `Extensions/Controls/CodeBlockControl.xaml`
-**职责**: 可复用的代码块UI控件（带复制功能）
-
-**功能特性**:
-- 顶部工具栏显示语言标签
-- 一键复制按钮
-- 复制成功/失败动画反馈
-- 支持动态主题切换
-- 自适应滚动
-
-#### `Extensions/Controls/CodeBlockControl.xaml.cs`
-**职责**: 代码块控件逻辑实现
-
-**依赖属性**:
-```csharp
-- CodeText (string)                      // 代码内容
-- ProgrammingLanguage (string)           // 语言标识
-- EnableSyntaxHighlighting (bool)        // 启用高亮
-```
-
-**核心功能**:
-1. **剪贴板集成**: 使用 `Clipboard.SetText()` 实现复制
-2. **语法高亮**: 支持 8+ 语言的关键字识别
-3. **动画反馈**: 复制成功显示勾号,失败显示抖动
-
-#### `Themes/`
-**职责**: 主题资源字典集合
-
-**三套主题**:
-1. **Light.xaml** - GitHub 风格浅色主题
-2. **Dark.xaml** - VS Code Dark+ 深色主题
-3. **HighContrast.xaml** - WCAG AAA 高对比度主题
-
-**资源键约定**:
-```xml
-Markdown.Foreground                  # 主文本颜色
-Markdown.CodeBlock.Background        # 代码块背景
-Markdown.Syntax.Keyword              # 关键字颜色
-Markdown.Link.Foreground             # 链接颜色
-... (30+ 资源键)
-```
-
----
-
-### 5. 示例项目
-
-#### `Samples/Markdown/`
-**职责**: Markdown 功能演示文档
-
-**文件**:
-1. **BasicFeatures.md** - 基础 Markdown 语法
-2. **CodeHighlighting.md** - 8+ 语言代码示例
-3. **AdvancedFeatures.md** - 高级特性展示
-
-#### `Samples/Themes/ThemeSwitchExample.xaml`
-**职责**: 主题切换演示窗口
-
-**功能**:
-- 三个主题切换按钮（浅色/深色/高对比度）
-- 实时主题切换演示
-- 完整的示例 Markdown 内容展示
-
-#### `Samples/README.md`
-**职责**: 示例使用说明
-
-**内容**:
-- 示例目录结构
-- 快速开始指南
-- 代码使用示例
-
----
-
-## 架构设计
-
-### 设计模式
-
-1. **依赖注入（DI）**:
-   - 通过 WPF 依赖属性实现数据绑定
-   - 支持 MVVM 模式
-
-2. **策略模式**:
-   - `WpfRenderer` + 自定义 `ObjectRenderer`
-   - 可插拔的渲染器系统
-
-3. **观察者模式**:
-   - 依赖属性变更通知
-   - `PropertyChangedCallback`
-
-4. **防抖/节流模式**:
-   - `DispatcherTimer` 实现 50ms 防抖
-   - 减少高频更新的性能开销
-
-### 扩展性
-
-#### 添加新的自定义渲染器
-
-**步骤**:
-1. 在 `Renderers/` 下创建新的渲染器类
-2. 继承 `WpfObjectRenderer<T>`（T 为 Markdig AST 节点类型）
-3. 重写 `Write()` 方法
-4. 在 `MarkdownViewer.CreateRenderer()` 中注册
-
-**示例**:
-```csharp
-// Renderers/Inlines/EmojiRenderer.cs
-public class EmojiRenderer : WpfObjectRenderer<EmojiInline>
-{
-    protected override void Write(WpfRenderer renderer, EmojiInline obj)
-    {
-        // 实现表情符号渲染
-    }
-}
-
-// 在 MarkdownViewer.xaml.cs 中注册
-renderer.ObjectRenderers.Add(new EmojiRenderer());
-```
-
-#### 添加新的主题
-
-**步骤**:
-1. 在 `Themes/` 下创建 `MyTheme.xaml`
-2. 定义资源键对应的颜色
-3. 在应用程序中合并资源字典
-
-**示例**:
-```xml
-<!-- Themes/MyTheme.xaml -->
-<ResourceDictionary>
-    <SolidColorBrush x:Key="Markdown.Foreground" Color="#FF0000"/>
-    <!-- 其他资源 -->
-</ResourceDictionary>
-```
-
----
-
-## 依赖关系
-
-### 外部依赖
-
-```
-MarkdView
-    ├── Markdig 0.43.0
-    │   ├── 解析 Markdown 为 AST
-    │   └── 提供扩展管道
-    │
-    └── Markdig.Wpf 0.5.0.1
-        ├── 将 AST 转换为 FlowDocument
-        ├── 提供 WpfRenderer 基类
-        └── 提供默认渲染器
-```
-
-### 项目引用
-
-```
-MinoChat (主应用)
-    └── MinoChat.Ui
-        └── MarkdView ← 项目引用
-```
-
----
-
-## 性能特性
-
-### 优化机制
-
-1. **防抖节流** (50ms):
-   - 高频更新合并为单次渲染
-   - CPU 占用 < 5%
-
-2. **缓存机制**:
-   - `_lastRenderedText` 避免重复渲染相同内容
-   - 空间换时间
-
-3. **懒加载**:
-   - `MarkdownPipeline` 单例模式
-   - 避免重复创建管道
-
-### 性能指标
-
-| 指标 | 数值 |
-|------|------|
-| 渲染延迟 | 50ms (可配置) |
-| CPU 占用 | <5% (流式) |
-| 内存占用 | ~2MB (中等文档) |
-| 支持文档大小 | <10MB (推荐) |
-
----
-
-## 测试策略
-
-### 当前状态
-- ✅ 手动集成测试（MinoChat）
-- ⚠️ 无自动化测试（v0.1.0）
-
-### 计划（v0.4.0）
-- [ ] 单元测试（xUnit）
-- [ ] UI 自动化测试
-- [ ] 性能基准测试
-- [ ] 内存泄漏测试
-
----
-
-## 贡献指南
-
-### 代码规范
-
-1. **命名约定**:
-   - 公共 API: PascalCase
-   - 私有字段: `_camelCase`
-   - 常量: UPPER_SNAKE_CASE
-
-2. **文档注释**:
-   - 所有公共成员必须有 XML 注释
-   - 复杂逻辑添加内联注释
-
-3. **文件组织**:
-   - 每个类一个文件
-   - 文件名与类名一致
-   - 使用命名空间文件夹结构
-
-### Pull Request 流程
-
-1. Fork 并创建特性分支
-2. 编写代码 + 测试
-3. 更新 CHANGELOG.md
-4. 提交 PR 并关联 Issue
-5. 等待 Code Review
-
----
-
-**维护者**: Claude Code
-**最后更新**: 2025-11-15
-**版本**: v0.2.0
+测试项目包含链接安全、图片协议、表格、删除线、自动链接、任务列表、语法高亮、主题字典和公共属性校验。WPF 对象测试必须在 STA 线程执行。

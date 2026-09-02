@@ -3,26 +3,85 @@
     <!-- 基础颜色 -->
     <SolidColorBrush x:Key="Markdown.Foreground" Color="#1F2937" />
     <SolidColorBrush x:Key="Markdown.Background" Color="#F8FAFC" />
+    <sys:Double x:Key="Markdown.LineHeight" xmlns:sys="clr-namespace:System;assembly=mscorlib">1.55</sys:Double>
     <SolidColorBrush x:Key="Markdown.Bold.Foreground" Color="#4C63EB" />
-    <Thickness x:Key="Markdown.PagePadding">18,14,18,16</Thickness>
+    <SolidColorBrush x:Key="Markdown.Toolbar.Background" Color="#E8EEF6" />
+    <SolidColorBrush x:Key="Markdown.Toolbar.Foreground" Color="#1F2937" />
+    <SolidColorBrush x:Key="Markdown.Toolbar.Button.Background" Color="#F8FAFC" />
+    <SolidColorBrush x:Key="Markdown.Toolbar.Button.Border" Color="#CBD5E1" />
+    <SolidColorBrush x:Key="Markdown.Toolbar.Button.HoverBackground" Color="#E2E8F0" />
+    <SolidColorBrush x:Key="Markdown.Toolbar.Button.HoverBorder" Color="#AAB8CC" />
+    <SolidColorBrush x:Key="Markdown.Toolbar.Button.PressedBackground" Color="#D5DEE9" />
+    <SolidColorBrush x:Key="Markdown.Surface.Background" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Markdown.Surface.Border" Color="#E2E8F0" />
+    <SolidColorBrush x:Key="Markdown.Divider" Color="#E2E8F0" />
+    <SolidColorBrush x:Key="Markdown.Muted.Foreground" Color="#64748B" />
+    <SolidColorBrush x:Key="Markdown.Subtle.Foreground" Color="#94A3B8" />
+    <SolidColorBrush x:Key="Markdown.Accent" Color="#5C9DFF" />
+    <SolidColorBrush x:Key="Markdown.Error.Foreground" Color="#B42318" />
+    <Thickness x:Key="Markdown.PagePadding">12,6,12,8</Thickness>
+    <Thickness x:Key="Markdown.Paragraph.Margin">0,1,0,4</Thickness>
+    <Thickness x:Key="Markdown.Heading.H1.Margin">0,10,0,6</Thickness>
+    <Thickness x:Key="Markdown.Heading.H2.Margin">0,8,0,5</Thickness>
+    <Thickness x:Key="Markdown.Heading.H3.Margin">0,6,0,4</Thickness>
+    <Thickness x:Key="Markdown.Heading.H4.Margin">0,5,0,3</Thickness>
+    <Thickness x:Key="Markdown.Heading.H5.Margin">0,5,0,3</Thickness>
+    <Thickness x:Key="Markdown.Heading.H6.Margin">0,5,0,3</Thickness>
+    <Thickness x:Key="Markdown.Heading.H1.Padding">0,0,0,4</Thickness>
+    <Thickness x:Key="Markdown.Heading.H2.Padding">0,0,0,3</Thickness>
+    <Thickness x:Key="Markdown.Heading.H3.Padding">0,0,0,3</Thickness>
+    <Thickness x:Key="Markdown.Quote.Margin">0,5,0,7</Thickness>
+    <Thickness x:Key="Markdown.List.Margin">0,1,0,4</Thickness>
+    <Thickness x:Key="Markdown.List.Item.Margin">0,0,0,2</Thickness>
+    <Thickness x:Key="Markdown.Table.Margin">0,4,0,6</Thickness>
+    <Thickness x:Key="Markdown.Table.Cell.Padding">5,2,5,2</Thickness>
+    <Thickness x:Key="Markdown.TaskList.Margin">0,0,5,0</Thickness>
+    <Thickness x:Key="Markdown.CodeBlock.Margin">0,4,0,6</Thickness>
+    <Thickness x:Key="Markdown.CodeBlock.Content.Padding">8,4,8,4</Thickness>
+    <sys:Double x:Key="Markdown.CodeBlock.Content.MaxHeight" xmlns:sys="clr-namespace:System;assembly=mscorlib">480</sys:Double>
+    <Thickness x:Key="Markdown.CodeBlock.BorderThickness">1</Thickness>
+    <CornerRadius x:Key="Markdown.CodeBlock.CornerRadius">6</CornerRadius>
+    <CornerRadius x:Key="Markdown.CodeBlock.Header.CornerRadius">8,8,0,0</CornerRadius>
+    <sys:Double x:Key="Markdown.CodeBlock.Header.Height" xmlns:sys="clr-namespace:System;assembly=mscorlib">28</sys:Double>
+    <sys:Double x:Key="Markdown.CodeBlock.CodeFontScale" xmlns:sys="clr-namespace:System;assembly=mscorlib">0.92</sys:Double>
+    <sys:Double x:Key="Markdown.CodeBlock.Language.FontScale" xmlns:sys="clr-namespace:System;assembly=mscorlib">0.9</sys:Double>
+    <sys:Double x:Key="Markdown.CodeBlock.Dot.Size" xmlns:sys="clr-namespace:System;assembly=mscorlib">8</sys:Double>
+    <sys:Double x:Key="Markdown.CodeBlock.Dot.Spacing" xmlns:sys="clr-namespace:System;assembly=mscorlib">5</sys:Double>
+    <Thickness x:Key="Markdown.CodeBlock.DotPanel.Margin">8,0,0,0</Thickness>
+    <Thickness x:Key="Markdown.CodeBlock.CopyButton.Margin">0,0,6,0</Thickness>
+    <sys:Double x:Key="Markdown.CodeBlock.CopyButton.Width" xmlns:sys="clr-namespace:System;assembly=mscorlib">22</sys:Double>
+    <sys:Double x:Key="Markdown.CodeBlock.CopyButton.Height" xmlns:sys="clr-namespace:System;assembly=mscorlib">22</sys:Double>
+    <CornerRadius x:Key="Markdown.CodeBlock.CopyButton.CornerRadius">4</CornerRadius>
     <Thickness x:Key="Markdown.Heading.BorderThickness">0,0,0,1</Thickness>
     <!-- 标题 -->
     <SolidColorBrush x:Key="Markdown.Heading.H1.Foreground" Color="#0F172A" />
     <SolidColorBrush x:Key="Markdown.Heading.H1.Border" Color="#4C63EB" />
     <SolidColorBrush x:Key="Markdown.Heading.H2.Foreground" Color="#1E293B" />
     <SolidColorBrush x:Key="Markdown.Heading.H2.Border" Color="#D5DEE9" />
+    <SolidColorBrush x:Key="Markdown.Heading.H3.Foreground" Color="#263449" />
+    <SolidColorBrush x:Key="Markdown.Heading.H3.Border" Color="#D5DEE9" />
+    <SolidColorBrush x:Key="Markdown.Heading.H4.Foreground" Color="#334155" />
+    <SolidColorBrush x:Key="Markdown.Heading.H4.Border" Color="#D5DEE9" />
+    <SolidColorBrush x:Key="Markdown.Heading.H5.Foreground" Color="#3F4D61" />
+    <SolidColorBrush x:Key="Markdown.Heading.H5.Border" Color="#D5DEE9" />
+    <SolidColorBrush x:Key="Markdown.Heading.H6.Foreground" Color="#475569" />
+    <SolidColorBrush x:Key="Markdown.Heading.H6.Border" Color="#D5DEE9" />
     <!-- 引用块 -->
     <SolidColorBrush x:Key="Markdown.Quote.Background" Color="#F1F5F9" />
     <SolidColorBrush x:Key="Markdown.Quote.Border" Color="#4C63EB" />
     <SolidColorBrush x:Key="Markdown.Quote.Foreground" Color="#334155" />
     <Thickness x:Key="Markdown.Quote.BorderThickness">3,0,0,0</Thickness>
-    <Thickness x:Key="Markdown.Quote.Padding">14,10,14,10</Thickness>
+    <Thickness x:Key="Markdown.Quote.Padding">8,6,8,6</Thickness>
     <!-- 内联代码 -->
     <SolidColorBrush x:Key="Markdown.InlineCode.Background" Color="#E2E8F0" />
     <SolidColorBrush x:Key="Markdown.InlineCode.Foreground" Color="#C2410C" />
     <SolidColorBrush x:Key="Markdown.InlineCode.Border" Color="#CBD5E1" />
     <Thickness x:Key="Markdown.InlineCode.BorderThickness">1</Thickness>
+    <Thickness x:Key="Markdown.InlineCode.Padding">4,0,4,0</Thickness>
     <CornerRadius x:Key="Markdown.InlineCode.CornerRadius">4</CornerRadius>
+    <sys:Double x:Key="Markdown.InlineCode.FontScale" xmlns:sys="clr-namespace:System;assembly=mscorlib">0.88</sys:Double>
+    <sys:Double x:Key="Markdown.InlineCode.LineHeightScale" xmlns:sys="clr-namespace:System;assembly=mscorlib">1.18</sys:Double>
+    <sys:Double x:Key="Markdown.InlineCode.MinHeightScale" xmlns:sys="clr-namespace:System;assembly=mscorlib">1.5</sys:Double>
     <!-- 链接 -->
     <SolidColorBrush x:Key="Markdown.Link.Foreground" Color="#4C63EB" />
     <!-- 代码块 -->
@@ -57,11 +116,16 @@
     <SolidColorBrush x:Key="Markdown.Table.Header.Foreground" Color="#1F2937" />
     <SolidColorBrush x:Key="Markdown.Table.Row.Background" Color="#F8FAFC" />
     <SolidColorBrush x:Key="Markdown.HorizontalRule.Border" Color="#D5DEE9" />
-    <Thickness x:Key="Markdown.HorizontalRule.Margin">0,18,0,18</Thickness>
+    <Thickness x:Key="Markdown.HorizontalRule.Margin">0,6,0,6</Thickness>
     <Thickness x:Key="Markdown.HorizontalRule.BorderThickness">0,1,0,0</Thickness>
     <SolidColorBrush x:Key="Markdown.Image.Background" Color="Transparent" />
     <SolidColorBrush x:Key="Markdown.Image.Border" Color="#D5DEE9" />
     <Thickness x:Key="Markdown.Image.BorderThickness">1</Thickness>
     <CornerRadius x:Key="Markdown.Image.CornerRadius">8</CornerRadius>
+    <Thickness x:Key="Markdown.Image.Padding">4</Thickness>
+    <sys:Double x:Key="Markdown.Image.MaxWidth" xmlns:sys="clr-namespace:System;assembly=mscorlib">800</sys:Double>
+    <sys:Double x:Key="Markdown.Image.TooltipMaxWidth" xmlns:sys="clr-namespace:System;assembly=mscorlib">300</sys:Double>
+    <Thickness x:Key="Markdown.Image.Placeholder.Margin">0,3,0,3</Thickness>
+    <Thickness x:Key="Markdown.Image.Margin">0,3,0,3</Thickness>
     <FontFamily x:Key="Markdown.CodeFontFamily">Cascadia Code,Consolas,Segoe UI Mono</FontFamily>
 </ResourceDictionary>

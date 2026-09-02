@@ -1,5 +1,6 @@
 using System;
-using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -7,6 +8,10 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using Markdig;
+using Markdig.Extensions.TaskLists;
+using Markdig.Extensions.DefinitionLists;
+using Markdig.Extensions.Footnotes;
+using Markdig.Extensions.Mathematics;
 using Markdig.Extensions.Tables;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
@@ -19,33 +24,134 @@ using MarkdigTable = Markdig.Extensions.Tables.Table;
 using MarkdigTableCell = Markdig.Extensions.Tables.TableCell;
 using MarkdigTableRow = Markdig.Extensions.Tables.TableRow;
 using MarkdigTableColumnAlign = Markdig.Extensions.Tables.TableColumnAlign;
+using MarkdView.Interactions;
+using MarkdView.Media;
+using MarkdView.Parsing;
+using MarkdView.Services;
+using MarkdView.Documents;
 
 namespace MarkdView.Renderers;
 
 /// <summary>
 /// Markdown 渲染器 - 负责将 Markdown 文本转换为 WPF FlowDocument
 /// </summary>
-public class MarkdownRenderer
+public class MarkdownRenderer : IMarkdownDocumentRenderer
 {
-    private readonly MarkdownPipeline _pipeline;
+    private readonly object _renderLock = new();
+    private readonly IMarkdownParser _parser;
+    private readonly IMarkdownDocumentParser _documentParser;
+    private readonly IClipboardService? _clipboardService;
+    private readonly ISyntaxHighlighter? _syntaxHighlighter;
     private double _baseFontSize;
     private FontFamily _fontFamily;
-    private static readonly HashSet<string> SafeExternalSchemes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        Uri.UriSchemeHttp,
-        Uri.UriSchemeHttps,
-        Uri.UriSchemeMailto
-    };
+    private MarkdownRenderSession? _activeRenderSession;
+    private readonly IMarkdownImageLoader _imageLoader;
+    private readonly WpfMarkdownImageLoader _wpfImageLoader;
+    private readonly WpfMarkdownLinkNavigator _linkNavigator;
 
+    /// <summary>
+    /// 保留 v1.0.10 及更早版本的单参数构造函数签名。
+    /// 可选参数不会生成旧的 CLR 构造函数元数据，因此不能只依赖下面的扩展构造函数。
+    /// </summary>
     public MarkdownRenderer(MarkdownPipeline pipeline)
+        : this(pipeline, null, null, null, null, null)
     {
-        _pipeline = pipeline;
+    }
+
+    public MarkdownRenderer(
+        MarkdownPipeline pipeline,
+        IMarkdownImageLoader? imageLoader = null,
+        IMarkdownLinkHandler? linkHandler = null,
+        IMarkdownParser? parser = null,
+        IClipboardService? clipboardService = null,
+        ISyntaxHighlighter? syntaxHighlighter = null)
+    {
+        ArgumentNullException.ThrowIfNull(pipeline);
+        _parser = parser ?? new MarkdigMarkdownParser(pipeline);
+        _documentParser = new MarkdigMarkdownDocumentParser(_parser);
+        _clipboardService = clipboardService;
+        _syntaxHighlighter = syntaxHighlighter;
+        _imageLoader = imageLoader ?? new HttpMarkdownImageLoader();
+        _wpfImageLoader = new WpfMarkdownImageLoader(_imageLoader);
+        _linkNavigator = new WpfMarkdownLinkNavigator(linkHandler ?? new ShellMarkdownLinkHandler());
         _baseFontSize = 12.0;
         _fontFamily = new FontFamily("Noto Sans, SF Pro SC, SF Pro Text, SF Pro Icons, PingFang SC, Helvetica Neue, Helvetica, Arial");
+        ImageLoadTimeout = MarkdownRenderDefaults.ImageLoadTimeout;
+        MaxImageBytes = MarkdownRenderDefaults.MaxImageBytes;
+        MaxImagesPerDocument = MarkdownRenderDefaults.MaxImagesPerDocument;
+        MaxImageDecodePixel = MarkdownRenderDefaults.MaxImageDecodePixel;
+        _activeImageLoadOptions = MarkdownRenderDefaults.CreateImageLoadOptions(MaxImageDecodePixel);
+        _activeMaxImagesPerDocument = MaxImagesPerDocument;
+    }
+
+    private TimeSpan _imageLoadTimeout;
+    private long _maxImageBytes;
+    private int _maxImagesPerDocument;
+    private MarkdownImageLoadOptions _activeImageLoadOptions;
+    private int _activeMaxImagesPerDocument;
+
+    /// <summary>
+    /// 默认单张图片加载超时，范围为大于 0 且不超过 10 分钟；请求快照可覆盖此值。
+    /// </summary>
+    public TimeSpan ImageLoadTimeout
+    {
+        get => _imageLoadTimeout;
+        set => _imageLoadTimeout = value > TimeSpan.Zero && value <= MarkdownImageLoadOptions.MaxTimeout
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(value), value, "图片加载超时必须大于 0 且不超过 10 分钟。");
     }
 
     /// <summary>
-    /// 将 Markdown 文本转换为 FlowDocument
+    /// 默认单张图片响应大小上限，范围为 1 到 256 MB；请求快照可覆盖此值。
+    /// </summary>
+    public long MaxImageBytes
+    {
+        get => _maxImageBytes;
+        set => _maxImageBytes = value > 0 && value <= MarkdownImageLoadOptions.MaxAllowedBytes
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(value), value, "图片大小限制必须在 1 到 256 MB 之间。");
+    }
+
+    /// <summary>
+    /// 默认单个文档图片数量上限，范围为 0 到 4096；0 表示阻止图片加载。
+    /// </summary>
+    public int MaxImagesPerDocument
+    {
+        get => _maxImagesPerDocument;
+        set => _maxImagesPerDocument = value >= 0 && value <= MarkdownRenderDefaults.MaxImagesPerDocumentLimit
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(value), value, "文档图片数量限制必须在 0 到 4096 之间。");
+    }
+
+    /// <summary>
+    /// 图片解码时允许的最大宽/高像素。较小的值可以降低超大图片的内存占用。
+    /// </summary>
+    public int MaxImageDecodePixel
+    {
+        get => _maxImageDecodePixel;
+        set => _maxImageDecodePixel = value is > 0 and <= 8192
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(value), value, "图片解码尺寸必须在 1 到 8192 像素之间。");
+    }
+
+    private int _maxImageDecodePixel;
+
+    /// <summary>
+    /// 取消当前文档仍在等待的图片加载和其他 renderer 级异步副作用。
+    /// </summary>
+    public void CancelPendingOperations()
+    {
+        lock (_renderLock)
+        {
+            _activeRenderSession?.Cancel();
+        }
+    }
+
+    // 保留内部别名，兼容协调器迁移前的调用点。
+    internal void CancelPendingImageLoads() => CancelPendingOperations();
+
+    /// <summary>
+    /// 保留旧版六参数方法签名。新能力通过下面的七参数 overload 或 options 入口提供。
     /// </summary>
     public FlowDocument ConvertMarkdownToFlowDocument(
         string markdown,
@@ -54,27 +160,131 @@ public class MarkdownRenderer
         bool enableSyntaxHighlighting,
         CodeBlockRenderer? codeBlockRenderer = null,
         bool useTransparentCanvas = false)
-    {
-        // 保存基础字体设置，供子元素使用
-        _baseFontSize = fontSize;
-        _fontFamily = fontFamily;
+        => ConvertMarkdownToFlowDocument(
+            markdown,
+            fontFamily,
+            fontSize,
+            enableSyntaxHighlighting,
+            codeBlockRenderer,
+            useTransparentCanvas,
+            foregroundOverride: null);
 
-        // 解析 Markdown 为 AST
-        var document = Markdown.Parse(markdown ?? string.Empty, _pipeline);
+    /// <summary>
+    /// 使用扩展的兼容入口渲染 Markdown。
+    /// </summary>
+    public FlowDocument ConvertMarkdownToFlowDocument(
+        string markdown,
+        FontFamily fontFamily,
+        double fontSize,
+        bool enableSyntaxHighlighting,
+        CodeBlockRenderer? codeBlockRenderer,
+        bool useTransparentCanvas,
+        Brush? foregroundOverride)
+    {
+        return ConvertMarkdownToFlowDocument(markdown, new MarkdownRenderOptions(fontFamily, fontSize)
+        {
+            EnableSyntaxHighlighting = enableSyntaxHighlighting,
+            CodeBlockRenderer = codeBlockRenderer,
+            UseTransparentCanvas = useTransparentCanvas,
+            Foreground = foregroundOverride
+        });
+    }
+
+    /// <summary>
+    /// 使用一次性的配置快照渲染 Markdown。新功能应优先使用此入口。
+    /// </summary>
+    public FlowDocument ConvertMarkdownToFlowDocument(string markdown, MarkdownRenderOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        var document = ParseMarkdown(markdown);
+        return ConvertDocumentToFlowDocument(document, options);
+    }
+
+    /// <summary>
+    /// 将已经解析的 AST 转换为 FlowDocument。解析可在后台线程完成，WPF 对象必须在 UI 线程创建。
+    /// </summary>
+    public FlowDocument ConvertDocumentToFlowDocument(
+        MarkdownDocument document,
+        FontFamily fontFamily,
+        double fontSize,
+        bool enableSyntaxHighlighting,
+        CodeBlockRenderer? codeBlockRenderer = null,
+        bool useTransparentCanvas = false,
+        Brush? foregroundOverride = null)
+    {
+        return ConvertDocumentToFlowDocument(document, new MarkdownRenderOptions(fontFamily, fontSize)
+        {
+            EnableSyntaxHighlighting = enableSyntaxHighlighting,
+            CodeBlockRenderer = codeBlockRenderer,
+            UseTransparentCanvas = useTransparentCanvas,
+            Foreground = foregroundOverride
+        });
+    }
+
+    /// <summary>
+    /// 将 AST 转换为 WPF FlowDocument。AST 可由后台线程预先生成，当前方法必须在 UI 线程调用。
+    /// </summary>
+    public FlowDocument ConvertDocumentToFlowDocument(MarkdownDocument document, MarkdownRenderOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(options);
+
+        lock (_renderLock)
+        {
+            return ConvertDocumentToFlowDocumentCore(document, options);
+        }
+    }
+
+    private FlowDocument ConvertDocumentToFlowDocumentCore(MarkdownDocument document, MarkdownRenderOptions options)
+        => ConvertDocumentToFlowDocumentCore(document, options, resetAsyncState: true);
+
+    private FlowDocument ConvertDocumentToFlowDocumentCore(
+        MarkdownDocument document,
+        MarkdownRenderOptions options,
+        bool resetAsyncState)
+    {
+
+        _baseFontSize = options.FontSize;
+        _fontFamily = options.FontFamily;
+        _activeImageLoadOptions = options.ImageLoadOptions
+            ?? new MarkdownImageLoadOptions(ImageLoadTimeout, MaxImageBytes)
+            {
+                MaxDecodePixel = MaxImageDecodePixel
+            };
+        _activeMaxImagesPerDocument = options.MaxImagesPerDocument
+            ?? MaxImagesPerDocument;
+        if (_activeMaxImagesPerDocument is < 0 or > MarkdownRenderDefaults.MaxImagesPerDocumentLimit)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(options),
+                _activeMaxImagesPerDocument,
+                $"文档图片数量限制必须在 0 到 {MarkdownRenderDefaults.MaxImagesPerDocumentLimit} 之间。");
+        }
+        if (resetAsyncState)
+        {
+            ResetAsyncRenderState();
+        }
 
         // 创建 FlowDocument 并应用基础样式
         var flowDocument = new FlowDocument
         {
-            FontFamily = fontFamily,
-            FontSize = fontSize,
-            LineHeight = GetDouble("Markdown.LineHeight", 1.68) * fontSize,
-            PagePadding = GetThickness("Markdown.PagePadding", new Thickness(2, 4, 2, 4))
+            FontFamily = options.FontFamily,
+            FontSize = options.FontSize,
+            LineHeight = GetDouble("Markdown.LineHeight", MarkdownLayoutDefaults.LineHeightScale) * options.FontSize,
+            PagePadding = GetThickness("Markdown.PagePadding", MarkdownLayoutDefaults.PagePadding)
         };
 
-        // 使用动态资源绑定 FlowDocument 的前景色和背景色（默认深色主题）
-        SetDynamicResource(flowDocument, FlowDocument.ForegroundProperty, "Markdown.Foreground",
-            new SolidColorBrush(Color.FromRgb(0xCC, 0xCC, 0xCC)));
-        if (useTransparentCanvas)
+        // 用户显式设置的 Foreground 优先，否则跟随主题资源。
+        if (options.Foreground != null)
+        {
+            flowDocument.Foreground = options.Foreground;
+        }
+        else
+        {
+            SetDynamicResource(flowDocument, FlowDocument.ForegroundProperty, "Markdown.Foreground",
+                new SolidColorBrush(Color.FromRgb(0xCC, 0xCC, 0xCC)));
+        }
+        if (options.UseTransparentCanvas)
         {
             flowDocument.Background = Brushes.Transparent;
         }
@@ -84,13 +294,12 @@ public class MarkdownRenderer
                 new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E)));
         }
 
-        var effectiveCodeBlockRenderer = codeBlockRenderer
-            ?? new CodeBlockRenderer(enableSyntaxHighlighting, baseFontSize: fontSize);
+        var effectiveCodeBlockRenderer = CreateCodeBlockRenderer(options);
 
         // 遍历所有块级元素
         foreach (var block in document)
         {
-            var element = ConvertBlock(block, enableSyntaxHighlighting, effectiveCodeBlockRenderer);
+            var element = ConvertBlock(block, options.EnableSyntaxHighlighting, effectiveCodeBlockRenderer);
             if (element != null)
             {
                 flowDocument.Blocks.Add(element);
@@ -101,6 +310,102 @@ public class MarkdownRenderer
         flowDocument.SubstituteGlyphs();
 
         return flowDocument;
+    }
+
+    /// <summary>
+    /// 开始一次由多个 Markdown 片段组成的兼容渲染会话。
+    /// 混合模型 renderer 使用它来保证不同回退块共享图片数量限制和取消令牌。
+    /// </summary>
+    internal void BeginFragmentRenderSession(
+        MarkdownRenderOptions options,
+        MarkdownRenderSession? sharedSession = null)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        lock (_renderLock)
+        {
+            _baseFontSize = options.FontSize;
+            _fontFamily = options.FontFamily;
+            _activeImageLoadOptions = options.ImageLoadOptions
+                ?? new MarkdownImageLoadOptions(ImageLoadTimeout, MaxImageBytes)
+                {
+                    MaxDecodePixel = MaxImageDecodePixel
+                };
+            _activeMaxImagesPerDocument = options.MaxImagesPerDocument
+                ?? MaxImagesPerDocument;
+            if (_activeMaxImagesPerDocument is < 0 or > MarkdownRenderDefaults.MaxImagesPerDocumentLimit)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(options),
+                    _activeMaxImagesPerDocument,
+                    $"文档图片数量限制必须在 0 到 {MarkdownRenderDefaults.MaxImagesPerDocumentLimit} 之间。");
+            }
+            ResetAsyncRenderState(sharedSession);
+        }
+    }
+
+    /// <summary>
+    /// 在当前兼容渲染会话中转换一个 Markdown 片段，不会取消之前片段的异步图片加载。
+    /// 调用方必须先调用 <see cref="BeginFragmentRenderSession"/>。
+    /// </summary>
+    internal FlowDocument ConvertMarkdownFragmentToFlowDocument(
+        string markdown,
+        MarkdownRenderOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        var document = ParseMarkdown(markdown);
+        lock (_renderLock)
+        {
+            return ConvertDocumentToFlowDocumentCore(document, options, resetAsyncState: false);
+        }
+    }
+
+    private void ResetAsyncRenderState(MarkdownRenderSession? sharedSession = null)
+    {
+        if (_activeRenderSession != null && !ReferenceEquals(_activeRenderSession, sharedSession))
+        {
+            _activeRenderSession.Dispose();
+        }
+
+        _activeRenderSession = sharedSession ?? new MarkdownRenderSession();
+    }
+
+    /// <summary>
+    /// 仅解析 Markdown，不创建任何 WPF 对象，可从后台线程调用。
+    /// </summary>
+    public MarkdownDocument ParseMarkdown(string markdown)
+    {
+        return _parser.Parse(markdown ?? string.Empty);
+    }
+
+    /// <summary>
+    /// 生成不暴露 Markdig 类型的稳定文档快照，供缓存、增量渲染和非 WPF 输出使用。
+    /// </summary>
+    public MarkdownDocumentModel ParseDocumentModel(string markdown)
+        => _documentParser.Parse(markdown ?? string.Empty);
+
+    /// <summary>
+    /// 模型解析端口的标准入口；保留 ParseDocumentModel 作为更明确的兼容别名。
+    /// </summary>
+    public MarkdownDocumentModel Parse(string markdown)
+        => ParseDocumentModel(markdown);
+
+    /// <summary>
+    /// 从稳定文档模型渲染。兼容 renderer 只依赖快照原文重新解析，模型本身不携带 Markdig AST。
+    /// </summary>
+    public FlowDocument ConvertDocumentToFlowDocument(
+        MarkdownDocumentModel model,
+        MarkdownRenderOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        return ConvertMarkdownToFlowDocument(model.SourceText, options);
+    }
+
+    private static void ValidateFontSize(double fontSize)
+    {
+        if (double.IsNaN(fontSize) || double.IsInfinity(fontSize) || fontSize <= 0 || fontSize > 200)
+        {
+            throw new ArgumentOutOfRangeException(nameof(fontSize), fontSize, "字号必须大于 0 且不超过 200。");
+        }
     }
 
     #region Block 转换
@@ -117,11 +422,83 @@ public class MarkdownRenderer
             QuoteBlock quote => ConvertQuote(quote, enableSyntaxHighlighting, codeBlockRenderer),
             ListBlock list => ConvertList(list, enableSyntaxHighlighting, codeBlockRenderer, listLevel),
             MarkdigTable table => ConvertTable(table, enableSyntaxHighlighting, codeBlockRenderer),
+            MathBlock math => ConvertMathBlock(math),
+            DefinitionList definitionList => ConvertExtensionContainer(definitionList, enableSyntaxHighlighting, codeBlockRenderer),
+            DefinitionItem definitionItem => ConvertExtensionContainer(definitionItem, enableSyntaxHighlighting, codeBlockRenderer),
+            FootnoteGroup footnoteGroup => ConvertExtensionContainer(footnoteGroup, enableSyntaxHighlighting, codeBlockRenderer),
+            Footnote footnote => ConvertExtensionContainer(footnote, enableSyntaxHighlighting, codeBlockRenderer),
+            DefinitionTerm definitionTerm => ConvertExtensionLeaf(definitionTerm),
             CodeBlock code => ConvertCodeBlock(code, codeBlockRenderer),
             ThematicBreakBlock => ConvertThematicBreak(),
-            _ => null
+            HtmlBlock htmlBlock => ConvertHtmlBlock(htmlBlock),
+            _ => ConvertUnknownBlock(block)
         };
     }
+
+    private WpfBlock ConvertHtmlBlock(HtmlBlock htmlBlock)
+    {
+        var text = htmlBlock.Lines.ToString();
+        return new Paragraph(new Run(text))
+        {
+            Margin = GetThickness("Markdown.Paragraph.Margin", MarkdownLayoutDefaults.ParagraphMargin),
+            FontFamily = _fontFamily
+        };
+    }
+
+    private WpfBlock ConvertUnknownBlock(MarkdigBlock block)
+    {
+        System.Diagnostics.Debug.WriteLine($"[MarkdownRenderer] Unsupported block {block.GetType().FullName}; rendered as text.");
+        return new Paragraph(new Run(block.ToString() ?? string.Empty))
+        {
+            Margin = GetThickness("Markdown.Paragraph.Margin", MarkdownLayoutDefaults.ParagraphMargin)
+        };
+    }
+
+    private WpfBlock ConvertMathBlock(MathBlock math)
+    {
+        return new Paragraph(new Run(math.Lines.ToString()))
+        {
+            Margin = GetThickness("Markdown.Paragraph.Margin", MarkdownLayoutDefaults.ParagraphMargin),
+            FontFamily = _fontFamily
+        };
+    }
+
+    private WpfBlock ConvertExtensionContainer(
+        ContainerBlock container,
+        bool enableSyntaxHighlighting,
+        CodeBlockRenderer codeBlockRenderer)
+    {
+        var section = new Section
+        {
+            Margin = GetThickness("Markdown.Paragraph.Margin", MarkdownLayoutDefaults.ParagraphMargin)
+        };
+
+        foreach (var child in container)
+        {
+            var rendered = ConvertBlock(child, enableSyntaxHighlighting, codeBlockRenderer);
+            if (rendered != null)
+            {
+                section.Blocks.Add(rendered);
+            }
+        }
+
+        if (section.Blocks.Count == 0)
+        {
+            section.Blocks.Add(new Paragraph(new Run(container.ToString() ?? string.Empty))
+            {
+                Margin = new Thickness(0)
+            });
+        }
+
+        return section;
+    }
+
+    private WpfBlock ConvertExtensionLeaf(DefinitionTerm term)
+        => new Paragraph(new Run(term.ToString() ?? string.Empty))
+        {
+            Margin = GetThickness("Markdown.Paragraph.Margin", MarkdownLayoutDefaults.ParagraphMargin),
+            FontFamily = _fontFamily
+        };
 
     /// <summary>
     /// 转换标题块
@@ -131,22 +508,15 @@ public class MarkdownRenderer
         var level = heading.Level;
         var paragraph = new Paragraph
         {
-            Margin = level switch
-            {
-                1 => new Thickness(0, 24, 0, 14),
-                2 => new Thickness(0, 20, 0, 12),
-                3 => new Thickness(0, 16, 0, 10),
-                _ => new Thickness(0, 12, 0, 8)
-            }
+            Margin = GetThickness($"Markdown.Heading.H{level}.Margin", MarkdownLayoutDefaults.HeadingMargin(level))
         };
 
         var levelKey = $"H{level}";
 
-        // H3 使用 H2 的样式
-        var styleKey = level == 3 ? "H2" : levelKey;
+        var styleKey = levelKey;
 
         // 标题字体大小基于基础字体大小按比例缩放
-        // 比例系数：H1=1.5, H2=1.25, H3=1.17, H4=1.08, H5=1.0, H6=1.0
+        // 比例系数：H1=1.75, H2=1.42, H3=1.24, H4=1.12, H5=1.02, H6=0.96
         var sizeRatio = level switch
         {
             1 => 1.75,
@@ -179,8 +549,9 @@ public class MarkdownRenderer
             SetDynamicResource(paragraph, Paragraph.BorderBrushProperty,
                 $"Markdown.Heading.{styleKey}.Border",
                 new SolidColorBrush(Color.FromRgb(0x4C, 0x63, 0xEB)));
-            paragraph.BorderThickness = GetThickness("Markdown.Heading.BorderThickness", new Thickness(0, 0, 0, 1));
-            paragraph.Padding = new Thickness(0, 0, 0, level == 1 ? 10 : 8);
+            paragraph.BorderThickness = GetThickness("Markdown.Heading.BorderThickness", MarkdownLayoutDefaults.HeadingBorderThickness);
+            paragraph.Padding = GetThickness($"Markdown.Heading.{styleKey}.Padding",
+                MarkdownLayoutDefaults.HeadingPadding(level));
         }
 
         // 转换内联内容
@@ -204,7 +575,7 @@ public class MarkdownRenderer
     {
         var wpfParagraph = new Paragraph
         {
-            Margin = new Thickness(0, 6, 0, 10),
+            Margin = GetThickness("Markdown.Paragraph.Margin", MarkdownLayoutDefaults.ParagraphMargin),
             TextAlignment = TextAlignment.Left
         };
 
@@ -228,9 +599,9 @@ public class MarkdownRenderer
     {
         var section = new Section
         {
-            BorderThickness = GetThickness("Markdown.Quote.BorderThickness", new Thickness(3, 0, 0, 0)),
-            Padding = GetThickness("Markdown.Quote.Padding", new Thickness(14, 10, 14, 10)),
-            Margin = new Thickness(0, 14, 0, 16)
+            BorderThickness = GetThickness("Markdown.Quote.BorderThickness", MarkdownLayoutDefaults.QuoteBorderThickness),
+            Padding = GetThickness("Markdown.Quote.Padding", MarkdownLayoutDefaults.QuotePadding),
+            Margin = GetThickness("Markdown.Quote.Margin", MarkdownLayoutDefaults.QuoteMargin)
         };
 
         // 使用动态资源绑定引用块的背景和边框颜色（默认深色主题）
@@ -268,7 +639,7 @@ public class MarkdownRenderer
             var leftPadding = list.IsOrdered
                 ? (listLevel == 0 ? 20 : 16 + (listLevel - 1) * 8)
                 : (listLevel == 0 ? 20 : 12 + (listLevel - 1) * 8);
-            listElement.Margin = new Thickness(0, 6, 0, 10);
+            listElement.Margin = GetThickness("Markdown.List.Margin", MarkdownLayoutDefaults.ListMargin);
             listElement.Padding = new Thickness(leftPadding, 0, 0, 0);
 
             if (list.IsOrdered)
@@ -297,7 +668,14 @@ public class MarkdownRenderer
 
             // 控制 marker 偏移，避免有序列表“编号和内容空格太大”
             listElement.MarkerOffset = listLevel == 0 ? 2 : 3;
-            listElement.StartIndex = 1;     // 有序列表起始序号
+            var orderedStart = 1;
+            if (list.IsOrdered
+                && int.TryParse(list.OrderedStart, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedStart))
+            {
+                orderedStart = Math.Max(1, parsedStart);
+            }
+
+            listElement.StartIndex = orderedStart;
 
             // 不设置 Foreground，让标记继承 FlowDocument 的前景色
 
@@ -307,7 +685,7 @@ public class MarkdownRenderer
                 {
                     var listItemElement = new ListItem
                     {
-                        Margin = new Thickness(0, 2, 0, 6),  // 列表项之间的间距
+                        Margin = GetThickness("Markdown.List.Item.Margin", MarkdownLayoutDefaults.ListItemMargin),
                         Padding = new Thickness(0, 0, 0, 0)
                     };
 
@@ -322,7 +700,7 @@ public class MarkdownRenderer
                             {
                                 para.Margin = new Thickness(0, 0, 0, 0);
                                 para.FontSize = _baseFontSize;
-                                para.LineHeight = _baseFontSize * GetDouble("Markdown.LineHeight", 1.68);
+                                para.LineHeight = _baseFontSize * GetDouble("Markdown.LineHeight", MarkdownLayoutDefaults.LineHeightScale);
                             }
                             listItemElement.Blocks.Add(element);
                         }
@@ -357,8 +735,8 @@ public class MarkdownRenderer
         var wpfTable = new System.Windows.Documents.Table
         {
             CellSpacing = 0,
-            Margin = new Thickness(0, 12, 0, 14),
-            BorderThickness = new Thickness(1)
+            Margin = GetThickness("Markdown.Table.Margin", MarkdownLayoutDefaults.TableMargin),
+            BorderThickness = MarkdownLayoutDefaults.TableBorderThickness
         };
 
         SetDynamicResource(wpfTable, System.Windows.Documents.Table.BorderBrushProperty,
@@ -392,8 +770,8 @@ public class MarkdownRenderer
 
                 var wpfCell = new System.Windows.Documents.TableCell
                 {
-                    Padding = new Thickness(10, 6, 10, 6),
-                    BorderThickness = new Thickness(0, 0, 1, 1),
+                    Padding = GetThickness("Markdown.Table.Cell.Padding", MarkdownLayoutDefaults.TableCellPadding),
+                    BorderThickness = MarkdownLayoutDefaults.TableCellBorderThickness,
                     TextAlignment = GetTableTextAlignment(table, cell.ColumnIndex)
                 };
 
@@ -443,7 +821,7 @@ public class MarkdownRenderer
                     if (converted is Paragraph paragraph)
                     {
                         paragraph.Margin = new Thickness(0);
-                        paragraph.LineHeight = _baseFontSize * GetDouble("Markdown.LineHeight", 1.68);
+                        paragraph.LineHeight = _baseFontSize * GetDouble("Markdown.LineHeight", MarkdownLayoutDefaults.LineHeightScale);
                     }
 
                     wpfCell.Blocks.Add(converted);
@@ -530,9 +908,9 @@ public class MarkdownRenderer
     {
         var paragraph = new Paragraph
         {
-            Margin = GetThickness("Markdown.HorizontalRule.Margin", new Thickness(0, 18, 0, 18)),
+            Margin = GetThickness("Markdown.HorizontalRule.Margin", MarkdownLayoutDefaults.HorizontalRuleMargin),
             BorderBrush = GetBrush("Markdown.HorizontalRule.Border", Color.FromRgb(0xE0, 0xE0, 0xE0)),
-            BorderThickness = GetThickness("Markdown.HorizontalRule.BorderThickness", new Thickness(0, 1, 0, 0)),
+            BorderThickness = GetThickness("Markdown.HorizontalRule.BorderThickness", MarkdownLayoutDefaults.HorizontalRuleBorderThickness),
             Padding = new Thickness(0)
         };
 
@@ -551,12 +929,34 @@ public class MarkdownRenderer
         return inline switch
         {
             LiteralInline literal => ConvertLiteral(literal),
+            MathInline math => new Run(math.ToString() ?? string.Empty),
+            FootnoteLink footnoteLink => new Run(footnoteLink.ToString() ?? string.Empty),
             EmphasisInline emphasis => ConvertEmphasis(emphasis),
             CodeInline code => ConvertInlineCode(code),
             LineBreakInline => new LineBreak(),
+            AutolinkInline autolink => ConvertAutolink(autolink),
+            HtmlInline html => new Run(html.Tag ?? string.Empty),
+            TaskList task => ConvertTaskList(task),
             LinkInline link => ConvertLink(link),
-            _ => null
+            _ => ConvertUnknownInline(inline)
         };
+    }
+
+    private WpfInline ConvertUnknownInline(MarkdigInline inline)
+    {
+        var span = new Span();
+        if (inline is ContainerInline container)
+        {
+            AppendInlineChildren(container, span.Inlines);
+        }
+
+        if (span.Inlines.Count == 0)
+        {
+            span.Inlines.Add(new Run(inline.ToString() ?? string.Empty));
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[MarkdownRenderer] Unsupported inline {inline.GetType().FullName}; rendered as text.");
+        return span;
     }
 
     /// <summary>
@@ -575,8 +975,12 @@ public class MarkdownRenderer
     {
         var span = new Span();
 
-        // 粗体 (**)
-        if (emphasis.DelimiterCount == 2)
+        if (emphasis.DelimiterChar == '~')
+        {
+            span.TextDecorations = TextDecorations.Strikethrough;
+        }
+        // 粗体 (** 或 __)
+        else if (emphasis.DelimiterCount >= 2)
         {
             span.FontWeight = FontWeights.Bold;
             span.Foreground = GetBrush("Markdown.Bold.Foreground", Color.FromRgb(0x4C, 0x63, 0xEB));
@@ -598,19 +1002,41 @@ public class MarkdownRenderer
         return span;
     }
 
+    private WpfInline ConvertTaskList(TaskList task)
+    {
+        var checkBox = new CheckBox
+        {
+            IsChecked = task.Checked,
+            IsEnabled = false,
+            IsHitTestVisible = false,
+            Focusable = false,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = GetThickness("Markdown.TaskList.Margin", MarkdownLayoutDefaults.TaskListMargin),
+            MinWidth = 14,
+            MinHeight = 14
+        };
+        System.Windows.Automation.AutomationProperties.SetName(
+            checkBox, task.Checked == true ? "已完成任务" : "未完成任务");
+        return new InlineUIContainer(checkBox) { BaselineAlignment = BaselineAlignment.Center };
+    }
+
     /// <summary>
     /// 转换行内代码
     /// </summary>
     private WpfInline ConvertInlineCode(CodeInline code)
     {
-        var inlineFontSize = _baseFontSize * 0.88;
+        var inlineFontSize = _baseFontSize * GetDouble(
+            "Markdown.InlineCode.FontScale",
+            MarkdownLayoutDefaults.InlineCodeFontScale);
         var codeText = new System.Windows.Controls.TextBlock
         {
             Text = code.Content,
             FontFamily = GetFontFamily("Markdown.CodeFontFamily", "Consolas, Monaco, Courier New, monospace"),
             FontSize = inlineFontSize,
             VerticalAlignment = VerticalAlignment.Center,
-            LineHeight = inlineFontSize * 1.18,
+            LineHeight = inlineFontSize * GetDouble(
+                "Markdown.InlineCode.LineHeightScale",
+                MarkdownLayoutDefaults.InlineCodeLineHeightScale),
             LineStackingStrategy = LineStackingStrategy.BlockLineHeight
         };
 
@@ -620,7 +1046,9 @@ public class MarkdownRenderer
 
         var textHost = new Grid
         {
-            MinHeight = Math.Ceiling(inlineFontSize * 1.5),
+            MinHeight = Math.Ceiling(inlineFontSize * GetDouble(
+                "Markdown.InlineCode.MinHeightScale",
+                MarkdownLayoutDefaults.InlineCodeMinHeightScale)),
             VerticalAlignment = VerticalAlignment.Center,
             SnapsToDevicePixels = true
         };
@@ -629,9 +1057,9 @@ public class MarkdownRenderer
         var border = new Border
         {
             Child = textHost,
-            Padding = new Thickness(6, 0, 6, 0),
-            CornerRadius = GetCornerRadius("Markdown.InlineCode.CornerRadius", new CornerRadius(4)),
-            BorderThickness = GetThickness("Markdown.InlineCode.BorderThickness", new Thickness(1)),
+            Padding = GetThickness("Markdown.InlineCode.Padding", MarkdownLayoutDefaults.InlineCodePadding),
+            CornerRadius = GetCornerRadius("Markdown.InlineCode.CornerRadius", MarkdownLayoutDefaults.InlineCodeCornerRadius),
+            BorderThickness = GetThickness("Markdown.InlineCode.BorderThickness", MarkdownLayoutDefaults.TableBorderThickness),
             SnapsToDevicePixels = true,
             UseLayoutRounding = true
         };
@@ -668,35 +1096,7 @@ public class MarkdownRenderer
             return fallbackSpan;
         }
 
-        var hyperlink = new Hyperlink
-        {
-            NavigateUri = safeUri,
-            TextDecorations = null,
-            FontWeight = FontWeights.SemiBold
-        };
-
-        // 使用动态资源绑定链接颜色（默认深色主题）
-        SetDynamicResource(hyperlink, Hyperlink.ForegroundProperty,
-            "Markdown.Link.Foreground",
-            new SolidColorBrush(Color.FromRgb(0x4C, 0x63, 0xEB)));
-
-        hyperlink.RequestNavigate += (s, e) =>
-        {
-            if (e.Uri == null || !SafeExternalSchemes.Contains(e.Uri.Scheme))
-            {
-                return;
-            }
-
-            try
-            {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = e.Uri.ToString(),
-                    UseShellExecute = true
-                });
-            }
-            catch { }
-        };
+        var hyperlink = CreateHyperlink(safeUri!);
 
         // 转换链接文本
         AppendInlineChildren(link, hyperlink.Inlines);
@@ -704,10 +1104,48 @@ public class MarkdownRenderer
         return hyperlink;
     }
 
+    private WpfInline ConvertAutolink(AutolinkInline link)
+    {
+        var url = link.Url ?? string.Empty;
+        if (link.IsEmail && !url.Contains(":", StringComparison.Ordinal))
+        {
+            url = "mailto:" + url;
+        }
+
+        if (!TryCreateSafeNavigateUri(url, out var safeUri))
+        {
+            return new Run(link.Url ?? string.Empty);
+        }
+
+        var hyperlink = CreateHyperlink(safeUri!);
+        hyperlink.Inlines.Add(new Run(link.Url ?? string.Empty));
+        return hyperlink;
+    }
+
+    private Hyperlink CreateHyperlink(Uri uri)
+    {
+        var hyperlink = new Hyperlink
+        {
+            NavigateUri = uri,
+            TextDecorations = null,
+            FontWeight = FontWeights.SemiBold
+        };
+        SetDynamicResource(hyperlink, Hyperlink.ForegroundProperty,
+            "Markdown.Link.Foreground",
+            new SolidColorBrush(Color.FromRgb(0x4C, 0x63, 0xEB)));
+        hyperlink.RequestNavigate += OnRequestNavigate;
+        return hyperlink;
+    }
+
+    private void OnRequestNavigate(object? sender, RequestNavigateEventArgs e)
+    {
+        _linkNavigator.Handle(e);
+    }
+
     internal static bool TryCreateSafeNavigateUri(string? url, out Uri? uri)
     {
         uri = null;
-        if (string.IsNullOrWhiteSpace(url))
+        if (string.IsNullOrWhiteSpace(url) || url.Length > 4096)
         {
             return false;
         }
@@ -717,7 +1155,12 @@ public class MarkdownRenderer
             return false;
         }
 
-        if (!SafeExternalSchemes.Contains(candidate.Scheme))
+        var isMailto = string.Equals(candidate.Scheme, Uri.UriSchemeMailto, StringComparison.OrdinalIgnoreCase);
+        if (!WpfMarkdownLinkNavigator.IsAllowedScheme(candidate.Scheme)
+            || (!isMailto && !string.IsNullOrEmpty(candidate.UserInfo))
+            || (!isMailto && string.IsNullOrWhiteSpace(candidate.Host))
+            || (isMailto && (string.IsNullOrWhiteSpace(candidate.Host)
+                || string.IsNullOrWhiteSpace(candidate.UserInfo))))
         {
             return false;
         }
@@ -725,6 +1168,19 @@ public class MarkdownRenderer
         uri = candidate;
         return true;
     }
+
+    internal WpfMarkdownLinkNavigator LinkNavigator => _linkNavigator;
+
+    internal WpfMarkdownImageLoader ImageLoaderAdapter => _wpfImageLoader;
+
+    internal CodeBlockRenderer CreateCodeBlockRenderer(MarkdownRenderOptions options)
+        => options.CodeBlockRenderer
+            ?? new CodeBlockRenderer(
+                options.EnableSyntaxHighlighting,
+                themeMode: ThemeManager.GetCurrentTheme(),
+                baseFontSize: options.FontSize,
+                clipboardService: _clipboardService,
+                syntaxHighlighter: _syntaxHighlighter);
 
     private void AppendInlineChildren(ContainerInline source, InlineCollection target)
     {
@@ -751,55 +1207,43 @@ public class MarkdownRenderer
         if (string.IsNullOrEmpty(image.Url))
             return new Run("[图片加载失败]");
 
+        if (!TryCreateSafeImageUri(image.Url, out var imageUri))
+        {
+            return new Run("[图片已阻止: 仅允许 http/https 地址]") { FontStyle = FontStyles.Italic };
+        }
+
+        var renderSession = _activeRenderSession;
+        if (renderSession == null
+            || !renderSession.TryReserveImage(_activeMaxImagesPerDocument))
+        {
+            return new Run("[图片数量超出限制]") { FontStyle = FontStyles.Italic };
+        }
+
         try
         {
-            var imageControl = new System.Windows.Controls.Image
+            var placeholder = new System.Windows.Controls.TextBlock
             {
-                Source = new BitmapImage(new Uri(image.Url, UriKind.RelativeOrAbsolute)),
-                Stretch = Stretch.Uniform,
-                MaxWidth = 800,
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Margin = new Thickness(0, 8, 0, 8),
-                Tag = image.Url
+                Text = "[图片加载中...]",
+                FontStyle = FontStyles.Italic,
+                Margin = GetThickness("Markdown.Image.Placeholder.Margin", MarkdownLayoutDefaults.ImagePlaceholderMargin)
             };
-
-            // 添加图片加载失败的处理
-            imageControl.ImageFailed += (s, e) =>
-            {
-                if (s is System.Windows.Controls.Image img)
-                {
-                    var textBlock = new System.Windows.Controls.TextBlock
-                    {
-                        Text = $"[图片加载失败: {img.Tag}]",
-                        Foreground = Brushes.Red,
-                        FontStyle = FontStyles.Italic,
-                        Margin = new Thickness(0, 8, 0, 8)
-                    };
-
-                    // 替换失败的图片为文本
-                    var parent = VisualTreeHelper.GetParent(img) as FrameworkElement;
-                    if (parent != null)
-                    {
-                        var container = parent.Parent as BlockUIContainer;
-                        if (container != null)
-                        {
-                            container.Child = textBlock;
-                        }
-                    }
-                }
-            };
-
-            // 为图片添加边框
             var border = new Border
             {
-                Child = imageControl,
                 Background = GetBrush("Markdown.Image.Background", Colors.Transparent),
                 BorderBrush = GetBrush("Markdown.Image.Border", Color.FromRgb(0xCC, 0xCC, 0xCC)),
-                BorderThickness = GetThickness("Markdown.Image.BorderThickness", new Thickness(0)),
-                CornerRadius = GetCornerRadius("Markdown.Image.CornerRadius", new CornerRadius(4)),
-                Padding = new Thickness(4),
+                BorderThickness = GetThickness("Markdown.Image.BorderThickness", MarkdownLayoutDefaults.ImageBorderThickness),
+                CornerRadius = GetCornerRadius("Markdown.Image.CornerRadius", MarkdownLayoutDefaults.ImageCornerRadius),
+                Padding = GetThickness("Markdown.Image.Padding", MarkdownLayoutDefaults.ImagePadding),
                 HorizontalAlignment = HorizontalAlignment.Left
             };
+            border.Child = placeholder;
+            _ = _wpfImageLoader.LoadIntoAsync(
+                border,
+                imageUri!,
+                placeholder,
+                _activeImageLoadOptions,
+                GetThickness("Markdown.Image.Margin", MarkdownLayoutDefaults.ImageMargin),
+                renderSession.Cancellation.Token);
 
             // 如果有替代文本，作为工具提示
             if (image.FirstChild != null)
@@ -809,7 +1253,7 @@ public class MarkdownRenderer
                 {
                     Text = image.FirstChild.ToString(),
                     TextWrapping = TextWrapping.Wrap,
-                    MaxWidth = 300
+                    MaxWidth = GetDouble("Markdown.Image.TooltipMaxWidth", MarkdownLayoutDefaults.ImageTooltipMaxWidth)
                 };
                 tooltip.Content = tooltipTextBlock;
                 border.ToolTip = tooltip;
@@ -821,11 +1265,14 @@ public class MarkdownRenderer
         {
             return new Run($"[图片加载失败: {ex.Message}]")
             {
-                Foreground = Brushes.Red,
+                Foreground = GetBrush("Markdown.Error.Foreground", Colors.Red),
                 FontStyle = FontStyles.Italic
             };
         }
     }
+
+    internal static bool TryCreateSafeImageUri(string? url, out Uri? uri)
+        => MarkdownImageSecurity.TryCreateSafeImageUri(url, out uri);
 
     #endregion
 
@@ -878,56 +1325,40 @@ public class MarkdownRenderer
 
     private Brush GetBrush(string key, Color defaultColor)
     {
-        if (Application.Current?.Resources.Contains(key) == true)
-        {
-            return (Brush)Application.Current.Resources[key];
-        }
-        return new SolidColorBrush(defaultColor);
+        return Application.Current?.TryFindResource(key) is Brush brush
+            ? brush
+            : new SolidColorBrush(defaultColor);
     }
 
     private FontFamily GetFontFamily(string key, string defaultFont)
     {
-        if (Application.Current?.Resources.Contains(key) == true)
-        {
-            return (FontFamily)Application.Current.Resources[key];
-        }
-        return new FontFamily(defaultFont);
-    }
-
-    private double GetFontSize(string key, double defaultSize)
-    {
-        if (Application.Current?.Resources.Contains(key) == true)
-        {
-            return (double)Application.Current.Resources[key];
-        }
-        return defaultSize;
+        return Application.Current?.TryFindResource(key) is FontFamily fontFamily
+            ? fontFamily
+            : new FontFamily(defaultFont);
     }
 
     private double GetDouble(string key, double defaultValue)
     {
-        if (Application.Current?.Resources.Contains(key) == true)
-        {
-            return (double)Application.Current.Resources[key];
-        }
-        return defaultValue;
+        return Application.Current?.TryFindResource(key) is double value
+            && value > 0
+            && !double.IsNaN(value)
+            && !double.IsInfinity(value)
+            ? value
+            : defaultValue;
     }
 
     private Thickness GetThickness(string key, Thickness defaultThickness)
     {
-        if (Application.Current?.Resources.Contains(key) == true)
-        {
-            return (Thickness)Application.Current.Resources[key];
-        }
-        return defaultThickness;
+        return Application.Current?.TryFindResource(key) is Thickness thickness
+            ? thickness
+            : defaultThickness;
     }
 
     private CornerRadius GetCornerRadius(string key, CornerRadius defaultCornerRadius)
     {
-        if (Application.Current?.Resources.Contains(key) == true)
-        {
-            return (CornerRadius)Application.Current.Resources[key];
-        }
-        return defaultCornerRadius;
+        return Application.Current?.TryFindResource(key) is CornerRadius cornerRadius
+            ? cornerRadius
+            : defaultCornerRadius;
     }
 
     #endregion

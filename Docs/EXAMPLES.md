@@ -8,7 +8,7 @@
 
 ```xaml
 <Window xmlns:markd="clr-namespace:MarkdView.Controls;assembly=MarkdView">
-    <markd:MarkdownViewer Markdown="{Binding MarkdownText}" />
+    <markd:MarkdownViewer Content="{Binding MarkdownText}" />
 </Window>
 ```
 
@@ -52,7 +52,7 @@ public partial class ChatViewModel : ObservableObject
 
 ```xaml
 <markd:MarkdownViewer
-    Markdown="{Binding AiResponse}"
+    Content="{Binding AiResponse}"
     EnableStreaming="True"
     StreamingThrottle="50"
     EnableSyntaxHighlighting="True" />
@@ -69,14 +69,12 @@ public partial class MyWindow : Window
     {
         InitializeComponent();
 
-        // 方式 1: 设置完整内容
-        MarkdownViewer.Markdown = "# Title\n\nContent...";
+        // 设置完整内容
+        MarkdownViewer.Content = "# Title\n\nContent...";
 
-        // 方式 2: 追加内容（流式场景）
-        MarkdownViewer.AppendMarkdown("\n\n新增的段落");
-
-        // 方式 3: 清空内容
-        MarkdownViewer.Clear();
+        // 追加或清空内容通过 Content 属性完成
+        MarkdownViewer.Content += "\n\n新增的段落";
+        MarkdownViewer.Content = string.Empty;
     }
 }
 ```
@@ -87,7 +85,7 @@ public partial class MyWindow : Window
 
 ```xaml
 <markd:MarkdownViewer
-    Markdown="{Binding DocumentContent}"
+    Content="{Binding DocumentContent}"
     EnableStreaming="False" />
 ```
 
@@ -118,7 +116,7 @@ public partial class MyWindow : Window
 
 ```xaml
 <markd:MarkdownViewer
-    Markdown="{Binding Content}"
+    Content="{Binding Content}"
     FontFamily="Consolas, Courier New"
     FontSize="16"
     Foreground="White"
@@ -136,7 +134,7 @@ public partial class MyWindow : Window
     <SolidColorBrush x:Key="Markdown.Background" Color="Transparent"/>
 
     <!-- 标题下划线 -->
-    <SolidColorBrush x:Key="Markdown.Heading.Border" Color="#5C9DFF"/>
+    <SolidColorBrush x:Key="Markdown.Heading.H1.Border" Color="#5C9DFF"/>
 
     <!-- 引用块 -->
     <SolidColorBrush x:Key="Markdown.Quote.Background" Color="#F9F9F9"/>
@@ -144,7 +142,7 @@ public partial class MyWindow : Window
 
     <!-- 表格 -->
     <SolidColorBrush x:Key="Markdown.Table.Border" Color="#E0E0E0"/>
-    <SolidColorBrush x:Key="Markdown.Table.HeaderBackground" Color="#F5F5F5"/>
+    <SolidColorBrush x:Key="Markdown.Table.Header.Background" Color="#F5F5F5"/>
 </Application.Resources>
 ```
 
@@ -154,11 +152,11 @@ public partial class MyWindow : Window
 <Application.Resources>
     <SolidColorBrush x:Key="Markdown.Foreground" Color="#CCCCCC"/>
     <SolidColorBrush x:Key="Markdown.Background" Color="#1E1E1E"/>
-    <SolidColorBrush x:Key="Markdown.Heading.Border" Color="#569CD6"/>
+    <SolidColorBrush x:Key="Markdown.Heading.H1.Border" Color="#569CD6"/>
     <SolidColorBrush x:Key="Markdown.Quote.Background" Color="#2D2D2D"/>
     <SolidColorBrush x:Key="Markdown.Quote.Border" Color="#569CD6"/>
     <SolidColorBrush x:Key="Markdown.Table.Border" Color="#3E3E3E"/>
-    <SolidColorBrush x:Key="Markdown.Table.HeaderBackground" Color="#2D2D2D"/>
+    <SolidColorBrush x:Key="Markdown.Table.Header.Background" Color="#2D2D2D"/>
 </Application.Resources>
 ```
 
@@ -167,20 +165,7 @@ public partial class MyWindow : Window
 ```csharp
 public void ApplyTheme(bool isDarkMode)
 {
-    var resources = Application.Current.Resources;
-
-    if (isDarkMode)
-    {
-        resources["Markdown.Foreground"] = new SolidColorBrush(Colors.White);
-        resources["Markdown.Background"] = new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E));
-        // ... 其他颜色
-    }
-    else
-    {
-        resources["Markdown.Foreground"] = new SolidColorBrush(Colors.Black);
-        resources["Markdown.Background"] = new SolidColorBrush(Colors.White);
-        // ... 其他颜色
-    }
+    ThemeManager.ApplyTheme(isDarkMode ? ThemeMode.Dark : ThemeMode.Light);
 }
 ```
 
@@ -257,7 +242,7 @@ public class ChatMessage : ObservableObject
 
                 <!-- AI 消息：Markdown 渲染 -->
                 <markd:MarkdownViewer
-                    Markdown="{Binding Content}"
+                    Content="{Binding Content}"
                     EnableStreaming="True"
                     Visibility="{Binding IsUser, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
             </Border>
@@ -273,7 +258,7 @@ public class ChatMessage : ObservableObject
 ```csharp
 // 对于超大文档（>100KB），禁用流式渲染
 MarkdownViewer.EnableStreaming = false;
-MarkdownViewer.Markdown = largeDocument;
+MarkdownViewer.Content = largeDocument;
 ```
 
 ### 高频更新场景
@@ -287,9 +272,8 @@ MarkdownViewer.StreamingThrottle = 100; // 降低更新频率
 
 ```csharp
 // 切换会话时清空旧内容
-MarkdownViewer.Clear();
-await Task.Delay(10); // 给 GC 时间回收
-MarkdownViewer.Markdown = newSessionContent;
+MarkdownViewer.Content = string.Empty;
+MarkdownViewer.Content = newSessionContent;
 ```
 
 ## 支持的 Markdown 语法

@@ -1,0 +1,38 @@
+name: MarkdView CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore MarkdView.slnx --force-evaluate
+      - name: Build
+        run: dotnet build MarkdView.slnx --configuration Release --no-restore -warnaserror
+      - name: Test
+        run: dotnet test MarkdView.slnx --configuration Release --no-build --no-restore
+      - name: Pack
+        run: dotnet pack MarkdView/MarkdView.csproj --configuration Release --no-build --no-restore --output artifacts/nuget
+      - name: Verify package contents
+        shell: pwsh
+        run: |
+          $package = Get-ChildItem artifacts/nuget/MarkdView*.nupkg | Select-Object -First 1
+          if (-not $package) { throw 'NuGet package was not produced.' }
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [System.IO.Compression.ZipFile]::OpenRead($package.FullName)
+          try {
+            $entries = @($archive.Entries | ForEach-Object { $_.FullName })
+          }
+          finally {
+            $archive.Dispose()
+          }
+          foreach ($required in @('README.md', 'LICENSE', 'Guid.md', 'icon.png', 'lib/net8.0-windows7.0/MarkdView.dll')) {
+            if ($entries -notcontains $required) { throw "Missing package file: $required" }
+          }

@@ -3,6 +3,6 @@
                     >
 
     <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="../Controls/MarkdownViewer.xaml" />
+        <ResourceDictionary Source="/MarkdView;component/Controls/MarkdownViewer.xaml" />
     </ResourceDictionary.MergedDictionaries>
 </ResourceDictionary>

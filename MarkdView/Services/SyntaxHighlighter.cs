@@ -25,24 +25,39 @@ public static class SyntaxHighlighter
         @"|(?<Number>(\b0x[0-9a-fA-F]+\b|\b\d+(?:\.\d+)?[fFdDmM]?\b))" +
         @"|(?<Shell>\b(?:dotnet|add|package|cmd|npx|uvx|node|npm|git|echo|cd|ls|mkdir|rm|cp|mv)\b)";
 
-    private static readonly Regex SyntaxRegex = new(SyntaxPattern, RegexOptions.Compiled);
+    // 语法高亮是可选增强，必须有明确的时间边界，避免异常长输入阻塞 UI 线程。
+    private static readonly Regex SyntaxRegex = new(
+        SyntaxPattern,
+        RegexOptions.Compiled,
+        TimeSpan.FromMilliseconds(250));
 
     /// <summary>
     /// 对 TextBlock 应用语法高亮
     /// </summary>
     public static void ApplyHighlighting(TextBlock textBlock, string code, string? language)
     {
+        ArgumentNullException.ThrowIfNull(textBlock);
+        code ??= string.Empty;
         _ = language;
-        var lines = code.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-
-        for (int i = 0; i < lines.Length; i++)
+        try
         {
-            ApplyLineHighlighting(textBlock, lines[i]);
+            var lines = code.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
 
-            if (i < lines.Length - 1)
+            for (int i = 0; i < lines.Length; i++)
             {
-                textBlock.Inlines.Add(new LineBreak());
+                ApplyLineHighlighting(textBlock, lines[i]);
+
+                if (i < lines.Length - 1)
+                {
+                    textBlock.Inlines.Add(new LineBreak());
+                }
             }
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            // 超时只影响高亮，不影响 Markdown 文档本身的可读性。
+            textBlock.Inlines.Clear();
+            textBlock.Text = code;
         }
     }
 

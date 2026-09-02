@@ -5,7 +5,7 @@
 ## 基本使用
 
 ```xml
-<markd:MarkdownViewer Markdown="{Binding Content}" Theme="{Binding Theme}" />
+<markd:MarkdownViewer Content="{Binding Content}" Theme="Auto" />
 ```
 
 ## 功能展示
@@ -72,8 +72,8 @@ console.log(greeting);
 
 | 属性 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| Markdown | string | "" | Markdown 文本 |
-| Theme | ThemeMode | Dark | 主题模式 |
+| Content | string | "" | Markdown 文本 |
+| Theme | ThemeMode | Auto | 兼容属性，实际主题由 ThemeManager 控制 |
 | EnableSyntaxHighlighting | bool | true | 语法高亮 |
 | FontSize | double | 14.0 | 字体大小 |
 

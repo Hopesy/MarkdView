@@ -8,6 +8,8 @@
         Title="MarkdView - 列表渲染测试"
         Width="1000"
         Height="700"
+        Background="{DynamicResource Markdown.Background}"
+        Foreground="{DynamicResource Markdown.Foreground}"
         mc:Ignorable="d">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
@@ -18,7 +20,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <!-- 工具栏 -->
-        <Border Grid.Row="0" Padding="10" Background="#F0F0F0" BorderBrush="#CCCCCC"
+        <Border Grid.Row="0" Padding="8" Background="{DynamicResource Markdown.Toolbar.Background}" BorderBrush="{DynamicResource Markdown.Surface.Border}"
                 BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -26,19 +28,19 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <TextBlock Margin="0,0,10,0" VerticalAlignment="Center" FontWeight="Bold" Text="列表操作：" />
-                    <Button Margin="5" Padding="10,5" Click="AddItem_Click" Content="➕ 添加消息" />
-                    <Button Margin="5" Padding="10,5" Click="ClearItems_Click" Content="🗑️ 清空列表" />
-                    <Button Margin="5" Padding="10,5" Click="LoadManyItems_Click" Content="📦 加载 20 条" />
-                    <TextBlock Margin="10,0,0,0" VerticalAlignment="Center"
+                    <TextBlock Margin="0,0,8,0" VerticalAlignment="Center" FontWeight="Bold" Text="列表操作：" />
+                    <Button Margin="3" Padding="8,4" Click="AddItem_Click" Content="➕ 添加消息" />
+                    <Button Margin="3" Padding="8,4" Click="ClearItems_Click" Content="🗑️ 清空列表" />
+                    <Button Margin="3" Padding="8,4" Click="LoadManyItems_Click" Content="📦 加载 20 条" />
+                    <TextBlock Margin="8,0,0,0" VerticalAlignment="Center"
                                Text="{Binding Items.Count, StringFormat='总计: {0} 条'}" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <TextBlock Margin="10,0" VerticalAlignment="Center" FontWeight="Bold" Text="主题：" />
-                    <Button Margin="5" Padding="10,5"
+                    <TextBlock Margin="8,0" VerticalAlignment="Center" FontWeight="Bold" Text="主题：" />
+                    <Button Margin="3" Padding="8,4"
                             Command="{Binding SwitchToLightThemeCommand}"
                             Content="浅色" />
-                    <Button Margin="5" Padding="10,5"
+                    <Button Margin="3" Padding="8,4"
                             Command="{Binding SwitchToDarkThemeCommand}"
                             Content="深色" />
                 </StackPanel>
@@ -46,10 +48,10 @@
         </Border>
         <!-- 消息列表 - ScrollViewer 包裹 ItemsControl -->
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <ItemsControl Margin="20" ItemsSource="{Binding Items}">
+            <ItemsControl Margin="10" ItemsSource="{Binding Items}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Margin="0,0,0,15" Padding="20" Background="White" BorderBrush="#E0E0E0"
+                        <Border Margin="0,0,0,8" Padding="12" Background="{DynamicResource Markdown.Surface.Background}" BorderBrush="{DynamicResource Markdown.Surface.Border}"
                                 BorderThickness="1" CornerRadius="8">
                             <Grid>
                                 <Grid.RowDefinitions>
@@ -58,22 +60,22 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <!-- 消息头部 -->
-                                <Grid Grid.Row="0" Margin="0,0,0,10">
+                                <Grid Grid.Row="0" Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                                         <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"
-                                                 Fill="#5C9DFF" />
-                                        <TextBlock FontSize="13" FontWeight="Bold" Foreground="#333333"
+                                                 Fill="{DynamicResource Markdown.Accent}" />
+                                        <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource Markdown.Foreground}"
                                                    Text="{Binding Title}" />
                                     </StackPanel>
-                                    <TextBlock Grid.Column="1" FontSize="11" Foreground="#999999"
+                                    <TextBlock Grid.Column="1" FontSize="11" Foreground="{DynamicResource Markdown.Subtle.Foreground}"
                                                Text="{Binding Timestamp, StringFormat='HH:mm:ss'}" />
                                 </Grid>
                                 <!-- 分隔线 -->
-                                <Border Grid.Row="1" Height="1" Margin="0,0,0,10" Background="#F0F0F0" />
+                                <Border Grid.Row="1" Height="1" Margin="0,0,0,8" Background="{DynamicResource Markdown.Divider}" />
                                 <!-- Markdown内容 -->
                                 <markd:MarkdownViewer Grid.Row="2"
                                                       Theme="Auto"
@@ -90,10 +92,10 @@
         <!-- 空状态提示 -->
         <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
                     Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <TextBlock FontSize="48" Foreground="#CCCCCC" Text="📝" TextAlignment="Center" />
-            <TextBlock Margin="0,10,0,0" FontSize="16" Foreground="#999999" Text="列表为空"
+            <TextBlock FontSize="48" Foreground="{DynamicResource Markdown.Subtle.Foreground}" Text="📝" TextAlignment="Center" />
+            <TextBlock Margin="0,10,0,0" FontSize="16" Foreground="{DynamicResource Markdown.Muted.Foreground}" Text="列表为空"
                        TextAlignment="Center" />
-            <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="#CCCCCC" Text="点击上方按钮添加消息"
+            <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource Markdown.Subtle.Foreground}" Text="点击上方按钮添加消息"
                        TextAlignment="Center" />
         </StackPanel>
     </Grid>

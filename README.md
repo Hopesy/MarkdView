@@ -12,7 +12,7 @@
 - 🎨 **语法高亮** - 内置多语言高亮支持
 - 😊 **Emoji 支持** - 基于 Emoji.Wpf 的彩色 Emoji 渲染
 - 💻 **Mac 风格代码块** - 带装饰性圆点的优雅代码展示
-- 🌓 **智能主题管理** - 支持自动跟随全局主题或独立设置
+- 🌓 **统一主题管理** - 所有控件跟随 `ThemeManager` 的应用级主题
 - 📐 **比例字体缩放** - 所有文本元素随 FontSize 成比例缩放
 - 🔧 **易扩展** - 基于 Markdig，支持丰富的 Markdown 特性
 - ⚡ **高性能** - 重入保护、低优先级异步渲染，确保 UI 流畅
@@ -48,7 +48,7 @@ public partial class MainViewModel : ObservableObject
 
 ### 主题管理
 
-MarkdView 提供智能主题管理系统，基于全局静态变量 `ThemeManager.CurrentTheme` 作为唯一真实来源，支持两种使用模式：
+MarkdView 使用应用级主题资源字典，`ThemeManager.CurrentTheme` 是唯一真实来源。控件默认 `Theme="Auto"`，主题切换不会让某个控件覆盖其他控件。
 
 #### 模式 1：自动跟随全局主题（推荐）
 
@@ -72,7 +72,7 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        // 初始化全局主题（所有 Theme="Auto" 的控件都会使用此主题）
+        // 初始化全局主题（所有 MarkdownViewer 都会使用此主题）
         ThemeManager.ApplyTheme(ThemeMode.Dark);
     }
 }
@@ -90,58 +90,18 @@ var currentTheme = ThemeManager.CurrentTheme; // 始终返回当前实际使用�
 - ✅ 主题由应用级别统一管理（如跟随系统主题）
 - ✅ 简化主题管理逻辑
 
-#### 模式 2：独立主题设置
+#### `Theme` 属性说明
 
-显式设置 `Theme` 属性为 `Light` 或 `Dark`，控件使用独立主题（并同步到全局）：
-
-```xaml
-<!-- 控件使用独立主题（数据绑定） -->
-<markd:MarkdownViewer
-    Content="{Binding Content}"
-    Theme="{Binding Theme}" />
-
-<!-- 或直接设置固定主题 -->
-<markd:MarkdownViewer
-    Content="{Binding Content}"
-    Theme="Dark" />
-```
-
-```csharp
-public partial class MainViewModel : ObservableObject
-{
-    [ObservableProperty]
-    private ThemeMode _theme = ThemeMode.Dark;
-
-    [RelayCommand]
-    private void SwitchToLight()
-    {
-        // 修改此属性会：
-        // 1. 更新控件主题
-        // 2. 同步更新 ThemeManager.CurrentTheme
-        Theme = ThemeMode.Light;
-    }
-
-    [RelayCommand]
-    private void SwitchToDark()
-    {
-        Theme = ThemeMode.Dark;
-    }
-}
-```
-
-**使用场景**：
-- ✅ 不同 Markdown 内容需要使用不同主题
-- ✅ 主题切换由特定控件或 ViewModel 管理
-- ✅ 需要通过数据绑定动态切换主题
+`Theme` 保留用于兼容旧 XAML。它只表达控件是否跟随全局主题，不会创建控件级资源字典；要切换颜色，请调用 `ThemeManager.ApplyTheme(ThemeMode.Light/Dark)`。
 
 #### ThemeMode 枚举
 
 ```csharp
 public enum ThemeMode
 {
-    Auto = 0,   // 自动跟随全局主题（默认，推荐）
-    Light = 1,  // 浅色主题
-    Dark = 2    // 深色主题
+    Auto = 0,   // 跟随 ThemeManager（默认）
+    Light = 1,  // 兼容值，不覆盖全局资源
+    Dark = 2    // 兼容值，不覆盖全局资源
 }
 ```
 
@@ -157,11 +117,66 @@ public enum ThemeMode
     StreamingThrottle="50"
     EnableSyntaxHighlighting="True"
     UseTransparentCanvas="False"
+    ImageLoadTimeout="0:0:10"
+    MaxImageBytes="8388608"
+    MaxImagesPerDocument="64"
+    MaxImageDecodePixel="1600"
     FontSize="12"
     FontFamily="Microsoft YaHei UI"
     VerticalScrollBarVisibility="Auto"
     HorizontalScrollBarVisibility="Auto" />
 ```
+
+### 可测试的服务端口
+
+默认构造路径适合普通 WPF 应用；需要统一网络策略、禁止打开外部链接或在测试中隔离系统副作用时，可以通过构造函数注入替换实现：
+
+```csharp
+using MarkdView.Interactions;
+using MarkdView.Media;
+using MarkdView.Services;
+
+var viewer = new MarkdownViewer(
+    imageLoader: new HttpMarkdownImageLoader(),
+    linkHandler: new ShellMarkdownLinkHandler(),
+    clipboardService: new WpfClipboardService(),
+    syntaxHighlighter: new DefaultSyntaxHighlighter());
+```
+
+对应接口位于 `MarkdView.Media`、`MarkdView.Interactions` 和 `MarkdView.Services` 命名空间：
+
+- `IMarkdownImageLoader`：图片下载、大小限制和解码策略；
+- `IMarkdownLinkHandler`：外部链接打开策略；
+- `IClipboardService`：代码复制端口；
+- `ISyntaxHighlighter`：语法高亮策略；
+- `IMarkdownParser`：Markdown 解析端口，可替换 Markdig 适配器。
+- `IThemeService`：主题状态、资源切换和主题应用通知；默认实现为 `WpfThemeService`。
+
+需要接入自定义解析器时，可直接实现 `IMarkdownDocumentParser` 并返回 `MarkdownDocumentModel`；模型构造函数会复制顶层块集合，避免解析器复用内部列表后改变已提交快照。
+
+图片安全策略也可以直接在控件上配置：`ImageLoadTimeout`（大于 0 且不超过 10 分钟）、`MaxImageBytes`（1 到 256 MB）、`MaxImagesPerDocument`（0 到 4096，0 表示不加载图片）和 `MaxImageDecodePixel`（1 到 8192，限制解码后的最大宽/高）。这些属性会随每次渲染请求冻结，避免渲染过程中配置变化造成前后策略不一致。
+
+这些接口的默认实现仍由无参构造提供，因此不会破坏现有 XAML。需要替换主题服务时，可以使用五参数构造函数传入 `IThemeService`；原有四参数构造函数继续保留。架构分层、迁移边界和后续文档模型计划见 [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md)。
+
+### 渲染配置快照
+
+底层 renderer 支持使用 `MarkdownRenderOptions` 固定一次渲染所需的策略，避免渲染过程中读取变化中的限制：
+
+```csharp
+var options = new MarkdownRenderOptions(new FontFamily("Segoe UI"), 14)
+{
+    EnableSyntaxHighlighting = true,
+    ImageLoadOptions = new MarkdownImageLoadOptions(
+        timeout: TimeSpan.FromSeconds(10),
+        maxBytes: 8 * 1024 * 1024)
+    {
+        MaxDecodePixel = 1600
+    },
+    MaxImagesPerDocument = 32
+};
+```
+
+`WpfFlowDocumentRenderer` 会对旧版兼容 renderer 的属性做一次快照；未显式设置时继续使用 `MarkdownRenderer` 的默认限制。
 
 ### 字体与字号设置
 
@@ -355,7 +370,7 @@ MarkdownLoadedBehavior.StartTracking(
 - 所有代码块语法高亮完成
 - 文档配置和布局完成
 
-**注意**：事件在 `DispatcherPriority.Background` 优先级下触发，确保 UI 主线程不被阻塞。
+解析阶段在线程池执行，FlowDocument 创建和布局仍在 UI 线程。解析或构建失败时会触发 `RenderFailed`，随后仍触发 `RenderCompleted`，调用方可以统一结束 loading 状态。
 
 ### 列表场景使用
 
@@ -466,11 +481,12 @@ C#, JavaScript, TypeScript, Python, Java, C/C++, Go, Rust, SQL, Bash, HTML, CSS,
 
 | 元素 | 缩放比例 | 示例（FontSize=12） |
 |------|---------|-------------------|
-| H1 标题 | 1.5× | 18px |
-| H2 标题 | 1.25× | 15px |
-| H3 标题 | 1.17× | 14px |
-| H4 标题 | 1.08× | 13px |
-| H5/H6 标题 | 1.0× | 12px |
+| H1 标题 | 1.75× | 18px |
+| H2 标题 | 1.42× | 17px |
+| H3 标题 | 1.24× | 15px |
+| H4 标题 | 1.12× | 13.5px |
+| H5 标题 | 1.02× | 12px |
+| H6 标题 | 0.96× | 11.5px |
 | 正文 | 1.0× | 12px |
 | 一级列表 | 1.08× | 13px |
 | 嵌套列表 | 0.96× | 11.5px |
